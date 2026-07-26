@@ -386,6 +386,80 @@ function updateToxicFog() {
 }
 
 // ==========================================
+// DIREKTÍVA HUD FRISSÍTŐ FÜGGVÉNY
+// ==========================================
+window.updateDirectiveHUD = function() {
+    const dirHud = document.getElementById('directive-hud');
+    if (!dirHud) return;
+
+    if (playerStats.activeDirective && gameState === 'PLAYING') {
+        dirHud.classList.remove('hidden');
+        
+        let activeData = null;
+        ['tier1', 'tier2', 'tier3'].forEach(tier => {
+            let found = OmniCorpDirectives[tier].find(d => d.id === playerStats.activeDirective);
+            if (found) activeData = found;
+        });
+
+        if (activeData) {
+            document.getElementById('directive-title').innerText = activeData.title;
+            const progDisplay = document.getElementById('directive-progress');
+            
+            if (playerStats.directiveProgress >= activeData.goal) {
+                progDisplay.innerText = "TELJESÍTVE!";
+                progDisplay.style.color = "#00ff00";
+            } else {
+                progDisplay.innerText = `${playerStats.directiveProgress} / ${activeData.goal}`;
+                progDisplay.style.color = "#ffaa00";
+            }
+        }
+    } else {
+        dirHud.classList.add('hidden');
+    }
+}
+
+// ==========================================
+// VÁLLALATI DIREKTÍVÁK ÉRTÉKELÉSE (SZÁMOLÓ)
+// ==========================================
+window.checkDirective = function(actionType, targetType) {
+    if (!playerStats.activeDirective) return; // Nincs aktív küldetés
+
+    let activeData = null;
+    ['tier1', 'tier2', 'tier3'].forEach(tier => {
+        let f = OmniCorpDirectives[tier].find(d => d.id === playerStats.activeDirective);
+        if (f) activeData = f;
+    });
+
+    if (!activeData) return;
+    if (playerStats.directiveProgress >= activeData.goal) return; // Már kész van!
+
+    // Ha a játékos cselekedete és a célpont megegyezik a feladattal:
+    if (activeData.type === actionType && activeData.target === targetType) {
+        playerStats.directiveProgress++;
+        if (typeof savePlayerStats === 'function') savePlayerStats();
+        if (typeof updateUI === 'function') updateUI();
+
+        // --- HA MOST LETT KÉSZ: JUTALOM OSZTÁS! ---
+        if (playerStats.directiveProgress >= activeData.goal) {
+            playSound('heal'); // Siker hang
+            score += activeData.reward; // Pénz hozzáadása!
+            
+            // Beírjuk a teljesített listába, hogy többé ne sorsolja ki
+            playerStats.completedDirectives.push(playerStats.activeDirective);
+            playerStats.activeDirective = null; // Levesszük az aktív státuszt
+            playerStats.directiveProgress = 0;
+            
+            // Sárga felvillanás a képernyőn bónuszként
+            const ammoFlash = document.getElementById('ammo-flash'); 
+            if(ammoFlash) { ammoFlash.style.opacity = 0.8; setTimeout(() => ammoFlash.style.opacity = 0, 500); }
+            
+            if (typeof savePlayerStats === 'function') savePlayerStats();
+            if (typeof updateUI === 'function') updateUI();
+        }
+    }
+}
+
+// ==========================================
 // 4. LÖVÉS ÉS IRÁNYÍTÁS LOGIKA
 // ==========================================
 
@@ -397,17 +471,7 @@ window.handleShoot = function(e) {
 
     if (wpn.ammo <= 0) { 
         if (wpn.reserve > 0) { 
-            isReloading = true; 
-            playSound('reload'); 
-            document.getElementById('reload-text').classList.remove('hidden'); 
-            setTimeout(() => { 
-                const load = Math.min(wpn.maxAmmo - wpn.ammo, wpn.reserve); 
-                wpn.ammo += load; 
-                wpn.reserve -= load; 
-                isReloading = false; 
-                if (typeof updateUI === 'function') updateUI(); 
-                document.getElementById('reload-text').classList.add('hidden'); 
-            }, wpn.reloadTime); 
+            startReloading(wpn); // <--- ÚJ: Csak meghívjuk az új függvényt!
         } 
         return; 
     }
@@ -448,7 +512,14 @@ window.handleShoot = function(e) {
         // 5. ÜTKÖZÉSVIZSGÁLAT (Csak a látható / létező objektumokon)
         const intersects = globalRaycaster.intersectObjects(enemyHitboxes, false);
         const startPoint = new THREE.Vector3(0.5, -0.5, -1).applyMatrix4(camera.matrixWorld);
-        const endPoint = (isSuper || intersects.length === 0) ? globalRaycaster.ray.at(50, new THREE.Vector3()) : intersects[0].point;
+        let endPoint = (isSuper || intersects.length === 0) ? globalRaycaster.ray.at(50, new THREE.Vector3()) : intersects[0].point;
+        
+        // --- JAVÍTÁS: A LÉZER ÁTSZÚRÁSA ---
+        // Ha találtunk valamit, a lézer végét kicsit megtoljuk előre, hogy "beleálljon" a testébe, és ne tűnjön el a felületen!
+        if (intersects.length > 0 && !isSuper) {
+            let pushDirection = new THREE.Vector3().subVectors(endPoint, startPoint).normalize();
+            endPoint.add(pushDirection.multiplyScalar(2.0)); // 2 méterrel átszúrja
+        }
 
         
         // --- LÁTVÁNY ---
@@ -505,6 +576,12 @@ scene.add(cylinder);
                         if (plant.hp <= 0) {
                             playSound('burst'); 
                             
+                            // --- ÚJ: KÓDEX STATISZTIKA NÖVELÉSE ---
+                            if (typeof playerStats !== 'undefined') {
+                                playerStats.plantsDestroyed++;
+                                if (typeof savePlayerStats === 'function') savePlayerStats();
+                            }
+                            
                             for (let i = 0; i < 15; i++) {
                                 let p = bloodPool.find(part => !part.active);
                                 if (p) {
@@ -543,11 +620,13 @@ scene.add(cylinder);
                     if (typeof showHitmarker === 'function') showHitmarker(isHeadshot); 
                     playSound('zombieHit');
 
-              // ÚJ: A pajzs szorzó beépítése!
-                    let baseDmg = isHeadshot ? wpn.damage * 3 : wpn.damage;
-                    let dmg = baseDmg * (en.shieldMult || 1.0); 
+               // --- ÚJ: A RESEARCH BOOST LEKÉRÉSE A DATABASE.JS-BŐL! ---
+                    let researchBoost = typeof getDamageBoost === 'function' ? getDamageBoost(en.type === 'hider' ? 'stalker' : en.type) : 1.0;
                     
-                    // Ha a sebzés csökkentve lett (azaz 1.0-nál kisebb a szorzó), villanjon fel a pajzs!
+                    // Alapsebzés (fejlövés vagy test) * Pajzs szorzó (ha zöld/sárga tócsán áll) * KUTATÁSI BÓNUSZ (0-50% plusz!)
+                    let baseDmg = isHeadshot ? wpn.damage * 3 : wpn.damage;
+                    let dmg = (baseDmg * (en.shieldMult || 1.0)) * researchBoost; 
+                    
                     if (en.shieldMult < 1.0 && typeof showShieldIcon === 'function') {
                         showShieldIcon(en.shieldType);
                     }
@@ -556,11 +635,44 @@ scene.add(cylinder);
                     score += isHeadshot ? 50 : 10;
                     if (typeof updateUI === 'function') updateUI();
 
-                    if (en.health <= 0) {
+                   if (en.health <= 0) {
                         playSound(en.type === 'crawler' ? 'cry' : 'zombieDie');
-                        score += isHeadshot ? en.reward * 1.5 : en.reward; 
+                        let rewardAmmount = isHeadshot ? en.reward * 1.5 : en.reward;
+                        score += rewardAmmount; 
                         
+                        // --- JAVÍTÁS: A statType-ot IDEHOZTUK FELÜLRE, hogy mindenki lássa! ---
+                        // (Mivel a 'hider'-t átneveztük 'stalker'-re a kódexben)
+                        let statType = en.type === 'hider' ? 'stalker' : en.type;
+                        
+                        // --- KÓDEX STATISZTIKA NÖVELÉSE ---
+                        if (typeof playerStats !== 'undefined' && playerStats.kills) {
+                            playerStats.totalDataGathered += rewardAmmount; 
+                            
+                            if (playerStats.kills[statType]) {
+                                if (isHeadshot) playerStats.kills[statType].head++;
+                                else playerStats.kills[statType].body++;
+                            }
+                            
+                            if (typeof savePlayerStats === 'function') savePlayerStats();
+                        }
+                        
+                        // --- JAVÍTOTT DIREKTÍVA CHECK: LÖVÉS ---
+                        if (typeof checkDirective === 'function') {
+                            if (isHeadshot) checkDirective('kill_head', statType);
+                            else checkDirective('kill_body', statType);
+                            
+                            // DIREKTÍVA CHECK: POCSOLYÁN LÖVÉS (Pajzs)
+                            if (en.shieldType) checkDirective('puddle_kill', en.shieldType);
+                        }
+
+                        // JAVÍTÁS: Az 1. hullámtól azonnal feloldja a zöld pocsolyát is a kódexben!
+                        if (playerStats.wavesSurvived === 0) {
+                            playerStats.wavesSurvived = 1;
+                            if (typeof savePlayerStats === 'function') savePlayerStats();
+                        }
+
                         if (typeof createToxicPuddle === 'function') createToxicPuddle(en.mesh.position.x, en.mesh.position.z);
+                    
                         
                         // VÉRFRÖCCS
                         for (let i = 0; i < 15; i++) {
@@ -663,13 +775,45 @@ zoneRight.addEventListener('touchmove', (e) => {
 });
 zoneRight.addEventListener('touchend', (e) => { if (e.changedTouches[0].identifier === rightTouchId) rightTouchId = null; });
 
+
 // ==========================================
 // ÚJ, IGAZI PC-S FPS IRÁNYÍTÁS ÉS BIZTONSÁG
 // ==========================================
 const keys = { w: false, a: false, s: false, d: false };
 
-window.addEventListener('keydown', (e) => { let key = e.key.toLowerCase(); if (key in keys) keys[key] = true; });
+window.addEventListener('keydown', (e) => { 
+    let key = e.key.toLowerCase(); 
+    if (key in keys) keys[key] = true; 
+    
+    // --- ÚJ: MANUÁLIS ÚJRATÖLTÉS ("R" GOMB) ---
+    if (key === 'r' && gameState === 'PLAYING' && !isReloading) {
+        let wpn = weapons[currentWeaponId];
+        // Csak akkor tölt újra, ha nincs tele a tár, ÉS van tartalék lőszere!
+        if (wpn.ammo < wpn.maxAmmo && wpn.reserve > 0) {
+            startReloading(wpn);
+        }
+    }
+});
+
 window.addEventListener('keyup', (e) => { let key = e.key.toLowerCase(); if (key in keys) keys[key] = false; });
+
+// --- KÖZÖS ÚJRATÖLTŐ FÜGGVÉNY ---
+function startReloading(wpn) {
+    isReloading = true; 
+    playSound('reload'); 
+    document.getElementById('reload-text').classList.remove('hidden'); 
+    
+    setTimeout(() => { 
+        // Kiszámoljuk, mennyi golyó hiányzik a tárból
+        const load = Math.min(wpn.maxAmmo - wpn.ammo, wpn.reserve); 
+        wpn.ammo += load; 
+        wpn.reserve -= load; 
+        
+        isReloading = false; 
+        if (typeof updateUI === 'function') updateUI(); 
+        document.getElementById('reload-text').classList.add('hidden'); 
+    }, wpn.reloadTime); 
+}
 
 setInterval(() => {
     if (gameState === 'PLAYING') {
@@ -823,9 +967,10 @@ window.startWaveCountdown = function(isFirstWave = false) {
         glitchOverlay.classList.add('glitch-active');
     }
     
+ // 1. A VÉSZJELZŐ BEKAPCSOLÁSA (Piros, Villogó, Dobozos)
     if (waveDisplay) {
+        waveDisplay.classList.remove('normal-wave'); // Levesszük a sima stílust
         waveDisplay.innerText = "⚠️ TÉRBELI ANOMÁLIA ÉSZLELVE... ⚠️";
-        waveDisplay.style.color = "#ff0000"; 
         waveDisplay.classList.remove('hidden');
     }
 
@@ -841,17 +986,31 @@ window.startWaveCountdown = function(isFirstWave = false) {
             glitchOverlay.classList.add('hidden');
         }
         
+        // 2. A NORMÁL HULLÁM KIÍRÁSA (Fehér/Kék, doboz nélkül, eltűnős)
         if (waveDisplay) {
             waveDisplay.innerText = `${currentWave}. HULLÁM`;
-            waveDisplay.style.color = "#fff"; 
-            setTimeout(() => waveDisplay.classList.add('hidden'), 2000);
+            waveDisplay.classList.add('normal-wave'); // Visszatesszük a sima stílust
+            setTimeout(() => {
+                waveDisplay.classList.add('hidden');
+                waveDisplay.classList.remove('normal-wave'); // Kitakarítjuk utána
+            }, 2000);
         }
         
         // --- ÚJ: PONTOSAN A ZOMBIK GENERÁLÁSAKOR KELNEK KI A NÖVÉNYEK ---
         if (typeof executeMutations === 'function') executeMutations();
         
         if (typeof spawnEnemy === 'function') {
-            // (Itt marad a régi kódod a zombik és crawlerek ledobására...)
+            
+            // --- ÚJ: DOBZOK LERAKÁSA A HULLÁM ELEJÉN ---
+            // Biztonságképpen letöröljük az esetleg megmaradt dobozokat az előző körből
+            ammoBoxes.forEach(ab => { scene.remove(ab.mesh); }); ammoBoxes.length = 0;
+            medkits.forEach(mk => { scene.remove(mk.mesh); }); medkits.length = 0;
+            
+            // Ledobunk 4 lőszert és 4 medkitet
+            if (typeof spawnMedkit === 'function') {
+                for (let i = 0; i < 4; i++) spawnMedkit(getSafeSpawnPosition(0.5, 5).x, getSafeSpawnPosition(0.5, 5).z);
+                for (let i = 0; i < 4; i++) spawnAmmoBox(getSafeSpawnPosition(0.4, 5).x, getSafeSpawnPosition(0.4, 5).z);
+            }
             for(let i = 0; i < enemiesToSpawn; i++) {
                 spawnEnemy(getSafeSpawnPosition(enemyRadius, 15).x, getSafeSpawnPosition(enemyRadius, 15).z, bossSpawning && i===0);
             }
@@ -981,6 +1140,9 @@ function animate() {
         renderer.render(scene, camera); return; 
     }
 
+    if (typeof updateUI === 'function') updateUI();
+    if (typeof updateDirectiveHUD === 'function') updateDirectiveHUD();
+
     // JAVÍTOTT Automata tüzelés logikája
     let wpn = weapons[currentWeaponId];
     if (autoShootTimer > 0) autoShootTimer -= delta;
@@ -1001,13 +1163,13 @@ function animate() {
             let px = camera.position.x;
             let pz = camera.position.z;
             
-            // Megnézzük, milyen pocsolyán áll a játékos
+           // Megnézzük, milyen pocsolyán áll a játékos
             for (let p of toxicPuddles) {
                 let distSq = Math.pow(px - p.position.x, 2) + Math.pow(pz - p.position.z, 2);
                 if (distSq <= 1.2) {
-                    if (p.userData.state === 'green') playerDamage += 2;
-                    else if (p.userData.state === 'yellow') playerDamage += 5; // Dupla+ sebzés!
-                    else if (p.userData.state === 'ready') playerDamage += 10; // Durva büntetés!
+                    if (p.userData.state === 'green') { playerDamage += 2; checkDirective('puddle_stand', 'green'); }
+                    else if (p.userData.state === 'yellow') { playerDamage += 5; checkDirective('puddle_stand', 'yellow'); }
+                    else if (p.userData.state === 'ready') { playerDamage += 10; checkDirective('puddle_stand', 'ready'); }
                 }
             }
             
@@ -1128,8 +1290,23 @@ function animate() {
         document.exitPointerLock(); // <-- Visszaadjuk az egeret a bolthoz!
         if (typeof openShop === 'function') openShop(); 
 
-        if (isWaveActive && enemies.filter(e => e.type !== 'crawler').length === 0) {
+   if (isWaveActive && enemies.filter(e => e.type !== 'crawler').length === 0) {
         isWaveActive = false; 
+        
+// --- JAVÍTOTT: KÓDEX STATISZTIKA NÖVELÉSE (BODY / HEAD SZÉTVÁLASZTVA!) ---
+                        if (typeof playerStats !== 'undefined') {
+                            playerStats.totalDataGathered += rewardAmmount; 
+                            
+                            // Mivel a 'hider'-t átneveztük 'stalker'-re a kódexben!
+                            let statType = en.type === 'hider' ? 'stalker' : en.type;
+                            
+                            if (playerStats.kills[statType]) {
+                                if (isHeadshot) playerStats.kills[statType].head++;
+                                else playerStats.kills[statType].body++;
+                            }
+                            
+                            if (typeof savePlayerStats === 'function') savePlayerStats();
+                        }
         
         let waveDuration = clock.getElapsedTime() - waveStartTime;
         let parTime = enemiesToSpawn * 4; 
@@ -1397,6 +1574,9 @@ function animate() {
                 playerArmor -= block; rawDamage -= block / 2;
             }
             if (rawDamage > 0) playerHealth -= rawDamage;
+
+            // --- ÚJ: DIREKTÍVA CHECK (Sérülés) ---
+            checkDirective('take_damage', en.type);
             
             if (typeof updateUI === 'function') updateUI(); 
             const screenBlood = document.getElementById('screen-blood');
@@ -1489,9 +1669,10 @@ function animate() {
         }
     }
 
+    // --- MEDKIT FELVÉTELE ---
     for (let i = medkits.length - 1; i >= 0; i--) { 
         const mk = medkits[i]; mk.floatTime += 0.05; mk.mesh.position.y = mk.startY + Math.sin(mk.floatTime) * 0.3; 
-if (Math.hypot(savedCamX - mk.mesh.position.x, camera.position.z - mk.mesh.position.z) < 1.5) { 
+        if (Math.hypot(savedCamX - mk.mesh.position.x, camera.position.z - mk.mesh.position.z) < 1.5) { 
             playSound('heal'); 
             const healFlash = document.getElementById('heal-flash');
             if (healFlash) { healFlash.style.opacity = 1; setTimeout(() => healFlash.style.opacity = 0, 200); }
@@ -1502,24 +1683,27 @@ if (Math.hypot(savedCamX - mk.mesh.position.x, camera.position.z - mk.mesh.posit
             playerHealth = Math.min(maxHP, playerHealth + healAmount); 
             
             if (typeof updateUI === 'function') updateUI(); 
-            scene.remove(mk.mesh); medkits.splice(i, 1); 
-          setTimeout(() => { if(gameState !== 'MENU' && gameState !== 'GAMEOVER' && typeof spawnMedkit === 'function') spawnMedkit(getSafeSpawnPosition(0.5, 5).x, getSafeSpawnPosition(0.5, 5).z); }, 5000); 
+            scene.remove(mk.mesh); 
+            medkits.splice(i, 1); 
+            // FIGYELEM: KIVETTÜK A SETTIMEOUT RESPAWN-T!
         }
     }
     
+    // --- LŐSZER FELVÉTELE ---
     for (let i = ammoBoxes.length - 1; i >= 0; i--) { 
         const ab = ammoBoxes[i]; ab.floatTime += 0.05; ab.mesh.position.y = ab.startY + Math.sin(ab.floatTime) * 0.2; 
         if (Math.hypot(savedCamX - ab.mesh.position.x, camera.position.z - ab.mesh.position.z) < 1.5) { 
             playSound('ammo'); 
             const ammoFlash = document.getElementById('ammo-flash'); 
             if(ammoFlash) { ammoFlash.style.opacity = 1; setTimeout(() => ammoFlash.style.opacity = 0, 200); }
-           // LŐSZER LOOT FEJLESZTÉS:
-            let w = weapons[currentWeaponId]; 
-            let ammoAmount = w.maxAmmo * 2 * (1 + (skills.ammoLoot.level * 0.2));
-            w.reserve = Math.min(w.maxReserve, Math.floor(w.reserve + ammoAmount));
+           
+            // ÚJ LOGIKA: A Globális Töltő függvényt hívjuk meg! Nincs több loot-szorzó!
+            if (typeof giveGlobalAmmo === 'function') giveGlobalAmmo();
+
             if (typeof updateUI === 'function') updateUI(); 
-            scene.remove(ab.mesh); ammoBoxes.splice(i, 1); 
-            setTimeout(() => { if(gameState !== 'MENU' && gameState !== 'GAMEOVER' && typeof spawnAmmoBox === 'function') spawnAmmoBox(getSafeSpawnPosition(0.4, 5).x, getSafeSpawnPosition(0.4, 5).z); }, 5000);
+            scene.remove(ab.mesh); 
+            ammoBoxes.splice(i, 1); 
+            // FIGYELEM: KIVETTÜK A SETTIMEOUT RESPAWN-T!
         } 
     }
     
@@ -1705,25 +1889,66 @@ const loadInterval = setInterval(() => {
     }
 }, 100);
 
-// ÚJ: Kattintás a "Belépés a rendszerbe" gombra
-document.getElementById('loading-continue-btn').addEventListener('click', () => {
-    // Böngésző hangfeloldása (User Interaction megvolt)
-    if (listener.context.state === 'suspended') listener.context.resume();
+// ==========================================
+// INTRO VIDEÓ ÉS BELÉPÉS LOGIKA
+// ==========================================
+
+const introScreen = document.getElementById('intro-video-screen');
+const introVideo = document.getElementById('intro-video');
+const skipBtn = document.getElementById('skip-intro-btn');
+
+function showMainMenu() {
+    // 1. Videó képernyő eltüntetése
+    if (introScreen) introScreen.classList.add('hidden');
     
-    // Főmenü zene elindítása
+    // 2. Főmenü megnyitása és Zene elindítása!
+    document.getElementById('main-menu').classList.remove('hidden');
+    gameState = 'MENU'; 
+    
     if (sounds['menuMusic'] && sounds['menuMusic'].buffer && !sounds['menuMusic'].isPlaying) {
         sounds['menuMusic'].play();
     }
+}
 
-    // Töltőképernyő eltüntetése CSS áttűnéssel
-    const ls = document.getElementById('loading-screen');
-    if(ls) ls.style.opacity = '0'; 
+// Kattintás a "Belépés a Rendszerbe" gombra
+document.getElementById('loading-continue-btn').addEventListener('click', () => {
+    // Hangfeloldás
+    if (listener.context.state === 'suspended') listener.context.resume();
     
-    setTimeout(() => {
-        if(ls) ls.style.display = 'none';
-        document.getElementById('main-menu').classList.remove('hidden');
-        gameState = 'MENU'; // Elindul a kamera forgás
-    }, 1500);
+    // Töltőképernyő eltüntetése
+    const ls = document.getElementById('loading-screen');
+    if (ls) {
+        ls.style.opacity = '0'; 
+        setTimeout(() => ls.style.display = 'none', 1500);
+    }
+    
+    // Ha van betöltve videó (src), akkor lejátsszuk!
+    if (introVideo && introVideo.getAttribute('src') !== "A_TE_VIDEOD_LINKJE_IDE_JON.mp4") {
+        introScreen.classList.remove('hidden');
+        introVideo.volume = 1.0; 
+        introVideo.play().catch(e => {
+            // Ha a böngésző blokkolná az autoplays videót, azonnal ugrik a főmenübe!
+            console.warn("Videó lejátszás hiba:", e);
+            showMainMenu();
+        });
+        
+        // Ha véget ért a videó (10 mp után), ugorjon a Főmenübe!
+        introVideo.onended = () => {
+            showMainMenu();
+        };
+    } else {
+        // Ha nincs megadva videó (vagy placeholder maradt), egyből Főmenü!
+        setTimeout(showMainMenu, 1500);
+    }
 });
 
+// A SKIP (Kihagyás) gomb működése
+if (skipBtn && introVideo) {
+    skipBtn.addEventListener('click', () => {
+        introVideo.pause(); // Videó megállítása
+        showMainMenu();     // Ugrás a Főmenübe
+    });
+}
+
+// Játékciklus Indítása
 animate();
