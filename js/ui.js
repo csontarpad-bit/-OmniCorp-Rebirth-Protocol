@@ -661,6 +661,17 @@ document.getElementById('restart-btn').addEventListener('click', (e) => {
     document.getElementById('game-ui-wrapper').classList.add('hidden');
     document.getElementById('main-menu').classList.remove('hidden');
     gameState = 'MENU';
+
+    // --- ÚJ: ZENÉK KEZELÉSE ---
+    // 1. Leállítjuk a játék közbeni harci zenét (ha megy)
+    if (typeof sounds !== 'undefined' && sounds['music'] && sounds['music'].isPlaying) {
+        sounds['music'].stop();
+    }
+    
+    // 2. Elindítjuk a nyugodt Főmenü zenét (ha még nem megy)
+    if (typeof sounds !== 'undefined' && sounds['menuMusic'] && sounds['menuMusic'].buffer && !sounds['menuMusic'].isPlaying) {
+        sounds['menuMusic'].play();
+    }
 });
 
 // --- ÚJ: PAJZS IKON MEGJELENÍTÉSE ---
