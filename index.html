@@ -75,7 +75,6 @@
                 </div>
             </div>
 
-            <!-- JAVÍTOTT GOMB ID: close-archive-btn -->
             <div style="text-align: center;">
                 <button id="close-archive-btn" class="cyber-btn" style="margin-top: 30px; background: rgba(0, 50, 50, 0.8); border: 2px solid #00ffff; color: #00ffff; font-size: 20px; padding: 12px 40px; cursor: pointer; text-transform: uppercase; letter-spacing: 2px; transition: 0.2s;">KAPCSOLAT BONTÁSA</button>
             </div>
@@ -109,8 +108,18 @@
         <div id="terminal-screen" style="position: relative; width: 90%; max-width: 800px; max-height: 90vh; background: rgba(1, 15, 15, 0.75); border: 3px solid #00ffff; border-radius: 10px; box-shadow: 0 0 30px #00ffff, inset 0 0 50px rgba(0, 255, 255, 0.2); padding: 30px; display: flex; flex-direction: column; align-items: center; overflow-y: auto; backdrop-filter: blur(5px);">
             
             <div class="terminal-header" style="font-size: 40px; color: #fff; text-shadow: 0 0 10px #00ffff; text-align: center; text-transform: uppercase; letter-spacing: 4px; margin-bottom: 5px;">OMNICORP TERMINÁL</div>
-            <div class="terminal-sub" style="font-size: 20px; color: #00ffff; text-align: center; border-bottom: 1px solid #005555; padding-bottom: 15px; margin-bottom: 20px; width: 100%;">
-                EGYENLEG: <span id="shop-points" style="color: #ffcc00; text-shadow: 0 0 10px #ffaa00; font-weight: bold; font-size: 26px;">0</span>
+            
+            <!-- 1. SOR: EGYENLEG ÉS ÉLETERŐ (A két szélen) -->
+            <div class="terminal-sub" style="font-size: 20px; color: #00ffff; border-bottom: 1px dashed #005555; padding-bottom: 10px; margin-bottom: 10px; width: 100%; display: flex; justify-content: space-between; align-items: center; padding-left: 20px; padding-right: 20px; box-sizing: border-box;">
+                <div>EGYENLEG: <span id="shop-points" style="color: #ffcc00; text-shadow: 0 0 10px #ffaa00; font-weight: bold; font-size: 26px;">0</span></div>
+                <div>ÁLLAPOT: <span id="shop-health-display" style="color: #00ff00; font-weight: bold; font-size: 24px;">100%</span></div>
+            </div>
+
+            <!-- 2. SOR: LŐSZER ÉS FEGYVERVÁLTÓ GOMBOK (Középen) -->
+            <div style="width: 100%; display: flex; justify-content: center; align-items: center; gap: 20px; margin-bottom: 20px; border-bottom: 1px solid #005555; padding-bottom: 15px;">
+                <div style="font-size: 20px; color: #00ffff;">LŐSZER: <span id="shop-ammo-display" style="color: #fff; font-weight: bold; font-size: 24px;">0 / 0</span></div>
+                <!-- Ide dobja be az ui.js a gombokat! -->
+                <div id="shop-weapon-switches"></div>
             </div>
             
             <div class="shop-tabs" style="display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid #003333; padding-bottom: 10px; justify-content: center; width: 100%;">
@@ -128,16 +137,17 @@
                     <button id="buy-rifle" class="shop-btn"></button>
                     <button id="buy-super" class="shop-btn"></button>
                     
-                    <!-- GYORSMŰVELETEK EGYMÁS MELLETT -->
+                    <!-- GYORSMŰVELETEK (2 OSZLOP, 4 GOMB!) -->
                     <button id="buy-ammo" class="shop-btn"></button>
-                    <button id="buy-health" class="shop-btn"></button> <!-- ÚJ GOMB! -->
+                    <button id="buy-medkit" class="shop-btn"></button> <!-- ÚJ: Hordozható Medkit! -->
+                    <button id="buy-health" class="shop-btn"></button> <!-- A régi: Instant feltöltés -->
                     
-                    <div class="terminal-sub" style="grid-column: span 2; color: #ff5555; border-color: #550000; margin-top: 15px; margin-bottom: 0;">SZENNYEZETTSÉG: <span id="puddle-count">0</span> POCSOLYA</div>
-                    <button id="buy-clean" class="shop-btn" style="grid-column: span 2; border-left-color: #ffaa00;"></button>
+                    <button id="buy-clean" class="shop-btn"></button>  <!-- Takarító is befér egy kockába! -->
                 </div>
+                <!-- Ez a felirat mehet alájuk -->
+                <div class="terminal-sub" style="color: #ff5555; border-color: #550000; margin-top: 15px; margin-bottom: 0;">SZENNYEZETTSÉG: <span id="puddle-count">0</span> POCSOLYA</div>
             </div>
 
-            <!-- Képességek (Pontosan 6 db!) -->
             <div id="shop-skills" class="shop-tab-content hidden">
                 <div class="shop-grid">
                     <button id="skill-maxHealth" class="shop-btn"></button>
@@ -163,7 +173,7 @@
     <!-- JÁTÉK UI -->
     <div id="game-ui-wrapper" class="hidden">
         
-        <!-- HIÁNYZOTT: TOXIKUS GŐZ LENCSE -->
+        <!-- TOXIKUS GŐZ LENCSE -->
         <canvas id="cameraLens" style="position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 4;"></canvas>
 
         <div id="damage-flash"></div>
@@ -175,31 +185,73 @@
         <div id="ui-layer">
             <div id="radar"><div class="radar-center"></div><div class="radar-scanner"></div></div>
 
-            <!-- DIREKTÍVA KÖVETŐ (HUD) -->
-            <div id="directive-hud" class="hidden" style="position: absolute; top: 160px; left: 20px; background: rgba(0, 30, 0, 0.7); border-left: 4px solid #00ff00; padding: 10px 15px; border-radius: 0 5px 5px 0; color: #fff; font-family: 'Share Tech Mono', monospace; font-size: 14px; text-shadow: 0 0 5px #000; box-shadow: 0 0 10px rgba(0,255,0,0.2);">
-                <div style="color: #00ff00; font-weight: bold; margin-bottom: 5px; font-size: 16px;">AKTÍV DIREKTÍVA</div>
-                <div id="directive-title" style="margin-bottom: 5px;">Cím</div>
-                <div id="directive-progress" style="color: #ffaa00; font-weight: bold; font-size: 18px;">0 / 10</div>
+            <!-- BÓNUSZ IDŐZÍTŐ (Fent, Középre tolva kicsit) -->
+            <div id="timer-display" style="position: absolute; top: 20px; left: 50%; transform: translateX(-50%); color: #fff; font-size: 24px; font-weight: bold; text-shadow: 0 0 10px rgba(255, 255, 255, 0.5); z-index: 20; letter-spacing: 2px;">00:00.0</div>
+
+            <!-- DIREKTÍVA KÖVETŐ (Bal felül, radar alatt) -->
+            <div id="directive-hud" class="hidden" style="position: absolute; top: 160px; left: 20px; color: #fff; font-family: 'Share Tech Mono', monospace; font-size: 14px; text-shadow: 0 0 5px #000; border-left: 3px solid #00ffff; padding-left: 10px;">
+                <div style="color: #00ffff; font-weight: bold; margin-bottom: 2px; font-size: 14px; letter-spacing: 1px;">DIREKTÍVA</div>
+                <div id="directive-title" style="margin-bottom: 2px; font-size: 16px;">Cím</div>
+                <div id="directive-progress" style="color: #fff; font-weight: bold; font-size: 18px;">0 / 10</div>
             </div>
             
-            <div id="health-bar-container">
-                <div id="health-fill"></div>
-                <div id="armor-fill" style="width: 0%;"></div> 
+            <!-- ==========================================
+                 ÚJ: BAL ALSÓ SAROK (ÉLET, PÁNCÉL ÉS SKILL)
+                 ========================================== -->
+            <div style="position: absolute; bottom: 40px; left: 40px; display: flex; align-items: flex-end; gap: 20px; z-index: 30;">
+                
+                <!-- Életerő Szám -->
+                <div style="display: flex; align-items: baseline; gap: 5px;">
+                    <span style="font-size: 20px; color: #aaa;">HP</span>
+                    <span id="health-number" style="font-size: 48px; font-weight: bold; color: #fff; text-shadow: 0 2px 5px rgba(0,0,0,0.8); line-height: 0.8;">100</span>
+                </div>
+
+                <!-- Élet és Páncél Csíkok (Vékony, modern vonalak) -->
+                <div style="display: flex; flex-direction: column; justify-content: flex-end; width: 200px; padding-bottom: 5px; gap: 5px;">
+                    <div style="width: 100%; height: 6px; background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.2);">
+                        <div id="armor-fill" style="width: 0%; height: 100%; background: #00aaff; box-shadow: 0 0 8px #00aaff; transition: 0.2s;"></div>
+                    </div>
+                    <div style="width: 100%; height: 12px; background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.2);">
+                        <div id="health-fill" style="width: 100%; height: 100%; background: #fff; box-shadow: 0 0 10px rgba(255,255,255,0.5); transition: 0.2s;"></div>
+                    </div>
+                </div>
+
             </div>
-          
-            <div id="timer-display" style="position: absolute; top: 50px; right: 20px; color: #00ffff; font-size: 20px; text-shadow: 0 0 8px rgba(0, 255, 255, 0.6); z-index: 20;">BÓNUSZ IDŐ: 00:00</div>
+
+            <!-- ==========================================
+                 ÚJ: JOBB ALSÓ SAROK (FEGYVER HUD)
+                 ========================================== -->
+            <div style="position: absolute; bottom: 40px; right: 40px; display: flex; align-items: flex-end; gap: 15px; z-index: 30;">
+                
+                <!-- Tárban lévő lőszer (Nagy, bal oldalt) -->
+                <div id="ammo-clip" style="font-size: 60px; font-weight: bold; color: #00ffff; text-shadow: 0 2px 10px rgba(0, 255, 255, 0.5); line-height: 0.8;">10</div>
+                
+                <!-- Fegyver Ikon doboz (Középen) -->
+                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 150px; height: 60px; background: linear-gradient(to right, transparent, rgba(255,255,255,0.05), transparent); border-bottom: 2px solid rgba(255,255,255,0.3); padding-bottom: 5px;">
+                    <!-- IDEIGLENES SZÖVEG (Később lecserélheted egy <img src="..."> sziluettre!) -->
+                    <div id="weapon-icon-display" style="color: #fff; font-size: 24px; font-weight: bold; letter-spacing: 2px; opacity: 0.8;">PISZTOLY</div>
+                </div>
+
+                <!-- Tartalék lőszer (Kicsi, jobb oldalt) -->
+                <div id="ammo-reserve" style="font-size: 30px; font-weight: bold; color: #aaa; text-shadow: 0 2px 5px rgba(0,0,0,0.8); line-height: 0.8; padding-bottom: 5px;">30</div>
+
+                <!-- MOBIL GOMBOK (Egymás felett, félig átlátszóan a képernyő szélén) -->
+                <div style="display: flex; flex-direction: column; gap: 10px; margin-left: 20px;">
+                    <button id="switch-weapon-btn" class="hud-btn" style="background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.2); color: #fff; font-size: 12px; padding: 10px; cursor: pointer; border-radius: 50%;">🔄</button>
+                    <button id="shoot-btn" class="hud-btn" style="background: rgba(255,0,0,0.4); border: 1px solid rgba(255,0,0,0.5); color: #fff; font-size: 16px; padding: 15px; cursor: pointer; border-radius: 50%;">💥</button>
+                </div>
+
+            </div>
+
+            <!-- CÉLKERESZT -->
             <div id="crosshair"><div class="crosshair-center"></div></div>
-            
             <div id="hitmarker" class="hidden"></div>
             <div id="headshot-msg" class="hidden">FEJLÖVÉS! 💀</div>
             <div id="shield-icon" class="hidden">🛡️</div>
             
-            <button id="freeze-btn" class="hidden">❄️ FAGYASZTÁS</button> 
-            <button id="switch-weapon-btn">🔄 VÁLTÁS</button>
-            <div id="weapon-info-display">Pisztoly</div>
-            <div id="ammo-display">[ 10 / 30 ]</div>
-            <button id="shoot-btn">💥</button>
+            <button id="freeze-btn" class="hidden" style="position: absolute; bottom: 120px; left: 40px; background: rgba(0, 150, 255, 0.4); border: 1px solid #00ffff; color: #fff; padding: 10px 15px; font-family: monospace; cursor: pointer;">❄️ FAGYASZTÁS</button> 
             
+            <!-- JOYSTICK (Mobil) -->
             <div id="zone-left"></div>
             <div id="zone-right"></div>
             <div id="joy-base" class="hidden"><div id="joy-stick"></div></div>
@@ -209,6 +261,7 @@
         <div id="reload-text" class="hidden">ÚJRATÖLTÉS...</div>
     </div>
 
+    <!-- HALÁLKÉPERNYŐ -->
     <div id="game-over" class="hidden">
         <h1>MEGHALTÁL</h1>
         <p id="final-score">PONT: 0</p>
@@ -216,6 +269,7 @@
         <button id="restart-btn">VISSZA A MENÜBE</button>
     </div>
 
+    <!-- SZKRIPTEK -->
     <script src="database.js"></script>
     <script src="js/state.js"></script>
     <script src="js/ui.js"></script>
