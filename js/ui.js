@@ -285,19 +285,25 @@ function upgradeWeapon(wpnId, basePrice) {
     
     score -= cost;
     if (!w.owned) {
+        // --- ELSŐ VÁSÁRLÁS ---
         w.owned = true;
-        w.reserve = w.maxReserve;
-        // --- ÚJ: STATISZTIKA (Csak első vásárláskor oldja fel az Adatbázist) ---
+        currentWeaponId = wpnId; // Azonnal a kézbe adja az új fegyvert!
+        w.ammo = w.maxAmmo;      // JAVÍTÁS: Teli tár!
+        w.reserve = w.maxReserve; // Teli zseb!
+        
         if (typeof playerStats !== 'undefined' && playerStats.weaponsBought) {
             playerStats.weaponsBought[wpnId] = true;
             if (typeof savePlayerStats === 'function') savePlayerStats();
         }
     } else {
+        // --- FEJLESZTÉS ---
         w.level++;
-        // Bónuszok szintenként:
         if (w.level === 2) w.maxReserve = Math.floor(w.maxReserve * 1.5);
         if (w.level === 3) w.reloadTime = Math.floor(w.reloadTime * 0.75);
-        if (w.level === 4) w.maxAmmo = Math.floor(w.maxAmmo * 1.5);
+        if (w.level === 4) { 
+            w.maxAmmo = Math.floor(w.maxAmmo * 1.5);
+            w.ammo = w.maxAmmo; // Szintlépésnél is telerakja a megnövelt tárat!
+        }
         if (w.level === 5) w.damage *= 2;
     }
     updateShopButtons();
@@ -335,17 +341,68 @@ function upgradeSkill(skillId) {
     updateShopButtons();
 }
 
+// --- ÚJ: Fegyverváltás a Terminálon belül! ---
+window.switchTerminalWeapon = function(weaponId) {
+    if (weapons[weaponId] && weapons[weaponId].owned) {
+        currentWeaponId = weaponId;
+        // Azonnal újrarajzoljuk a Shopot, hogy a gomb színe és a lőszer-számláló is frissüljön!
+        updateShopButtons();
+        // A Játék HUD-ját is frissítjük!
+        if (typeof updateUI === 'function') updateUI();
+    }
+}
 
-// --- GOMBOK FRISSÍTÉSE (OMNICORP DIZÁJN - INFÓKKAL) ---
+// --- GOMBOK FRISSÍTÉSE ÉS TERMINÁL (OMNICORP DIZÁJN) ---
 window.updateShopButtons = function() {
+    // 1. Pénz frissítése
     let bonusText = lastWaveBonus > 0 ? ` <span style="color:#00ff00; font-size:18px;">(+${lastWaveBonus} BÓNUSZ)</span>` : '';
-    shopPoints.innerHTML = `${score} CR${bonusText}`;
+    const shopPointsEl = document.getElementById('shop-points');
+    if (shopPointsEl) shopPointsEl.innerHTML = `${score} CR${bonusText}`;
+
+    // --- ÚJ: Fegyver-Váltó Gombok az új, dedikált div-be! ---
+    let weaponSwitchHTML = `<div style="display: flex; gap: 8px;">`;
+    const weaponKeys = Object.keys(weapons);
+    weaponKeys.forEach(key => {
+        let isOwned = weapons[key].owned;
+        let isActive = (key === currentWeaponId);
+        let w = weapons[key];
+        
+        let bgColor = isActive ? "#00ffff" : (isOwned ? "rgba(0, 100, 100, 0.6)" : "rgba(30, 0, 0, 0.5)");
+        let color = isActive ? "#000" : (isOwned ? "#00ffff" : "#555");
+        let border = isActive ? "1px solid #fff" : "1px solid #005555";
+        let cursor = isOwned ? "pointer" : "not-allowed";
+        
+        // Letisztult dizájn: Csak a név jelenik meg a gombokban
+        weaponSwitchHTML += `<button onclick="switchTerminalWeapon('${key}')" style="background: ${bgColor}; color: ${color}; border: ${border}; padding: 5px 12px; font-size: 14px; cursor: ${cursor}; font-family: 'Share Tech Mono', monospace; border-radius: 3px; letter-spacing: 1px;">${w.name.toUpperCase()}</button>`;
+    });
+    weaponSwitchHTML += `</div>`;
+
+    // 2. Lőszer és Fegyver gombok beillesztése
+    let w = weapons[currentWeaponId];
+    const shopAmmoDisplay = document.getElementById('shop-ammo-display');
+    if (shopAmmoDisplay) shopAmmoDisplay.innerText = `${w.ammo} / ${w.reserve}`;
+    
+    const shopWeaponSwitches = document.getElementById('shop-weapon-switches');
+    if (shopWeaponSwitches) shopWeaponSwitches.innerHTML = weaponSwitchHTML;
+
+    // 3. Életerő frissítése
+    let maxHP = typeof skills !== 'undefined' ? 100 + (skills.maxHealth.level * 20) : 100;
+    const shopHealthDisplay = document.getElementById('shop-health-display');
+    if (shopHealthDisplay) {
+        let healthPercent = Math.max(0, Math.floor((playerHealth / maxHP) * 100));
+        shopHealthDisplay.innerText = `${Math.floor(playerHealth)} / ${maxHP} HP`;
+        shopHealthDisplay.style.color = healthPercent < 50 ? '#ff0000' : '#00ff00';
+    }
+
     if(typeof updateUI === 'function') updateUI();
 
-    function getBtnHTML(name, stat, price) {
+    // 2. Kártya Generáló Függvény (JAVÍTVA)
+    function getBtnHTML(name, imageUrl, stat, price) {
+        let imageHTML = imageUrl ? `<img src="${imageUrl}" style="width: 100%; height: 100%; object-fit: contain;">` : '';
         return `
             <div class="item-header">
                 <span class="item-name">${name}</span>
+                <div class="item-icon-box" style="width: 40px; height: 30px; background: transparent; border: none;">${imageHTML}</div>
             </div>
             <div class="item-stat">${stat}</div>
             <div class="item-price">${price}</div>
@@ -354,40 +411,32 @@ window.updateShopButtons = function() {
 
     // 1. FEGYVEREK 
     const weaponsData = [
-        { id: 'pistol', name: 'OMNICORP PISZTOLY', basePrice: 200 },
-        { id: 'shotgun', name: 'SÖRÉTES PUSKA', basePrice: 500 },
-        { id: 'rifle', name: 'GÉPKARABÉLY', basePrice: 1000 },
-        { id: 'super', name: 'NEHÉZ REVOLVER', basePrice: 5000 }
+        { id: 'pistol', name: 'OMNICORP PISZTOLY', basePrice: 200, image: "" },
+        { id: 'shotgun', name: 'SÖRÉTES PUSKA', basePrice: 500, image: "" },
+        { id: 'rifle', name: 'GÉPKARABÉLY', basePrice: 1000, image: "" },
+        { id: 'super', name: 'NEHÉZ REVOLVER', basePrice: 5000, image: "" }
     ];
 
     weaponsData.forEach(wData => {
         let btn = document.getElementById(`buy-${wData.id}`);
         if (!btn) return;
-        let w = weapons[wData.id];
+        let wp = weapons[wData.id];
         
-        // Szöveg generálása, hogy mit ad a következő szint!
         let nextLevelDesc = "";
-        if (w.level === 1) nextLevelDesc = "+50% Tartalék Lőszer";
-        else if (w.level === 2) nextLevelDesc = "-25% Újratöltési Idő";
-        else if (w.level === 3) nextLevelDesc = "+50% Tárkapacitás";
-        else if (w.level === 4) nextLevelDesc = "Páncéltörő (+100% Sebzés)";
+        if (wp.level === 1) nextLevelDesc = "+50% Tartalék Lőszer";
+        else if (wp.level === 2) nextLevelDesc = "-25% Újratöltési Idő";
+        else if (wp.level === 3) nextLevelDesc = "+50% Tárkapacitás";
+        else if (wp.level === 4) nextLevelDesc = "Páncéltörő (+100% Sebzés)";
         
-        if (!w.owned) { 
-            // Nincs feloldva
-            btn.innerHTML = getBtnHTML(wData.name, "ÁLLAPOT: ZÁROLVA", `ENGEDÉLYEZÉS: ${wData.basePrice} CR`); 
+        if (!wp.owned) { 
+            btn.innerHTML = getBtnHTML(wData.name, wData.image, "ÁLLAPOT: ZÁROLVA", `ENGEDÉLYEZÉS: ${wData.basePrice} CR`); 
             btn.disabled = score < wData.basePrice; 
-        } else if (w.level < 5) { 
-            // Fejlesztés
-            let upgPrice = wData.basePrice * w.level;
-            btn.innerHTML = getBtnHTML(
-                wData.name, 
-                `FEJLETTSÉG: LVL <span style="color:#fff;">${w.level}</span> ➔ <span style="color:#00ffff;">${w.level+1}</span><br><span style="color:#00ffff; font-size: 12px;">BÓNUSZ: ${nextLevelDesc}</span>`, 
-                `KALIBRÁCIÓ: ${upgPrice} CR`
-            ); 
+        } else if (wp.level < 5) { 
+            let upgPrice = wData.basePrice * wp.level;
+            btn.innerHTML = getBtnHTML(wData.name, wData.image, `FEJLETTSÉG: LVL <span style="color:#fff;">${wp.level}</span> ➔ <span style="color:#00ffff;">${wp.level+1}</span><br><span style="color:#00ffff; font-size: 12px;">BÓNUSZ: ${nextLevelDesc}</span>`, `KALIBRÁCIÓ: ${upgPrice} CR`); 
             btn.disabled = score < upgPrice;
         } else { 
-            // Max szint
-            btn.innerHTML = getBtnHTML(wData.name, "ÁLLAPOT: MAX SZINT (LVL 5)", "---"); 
+            btn.innerHTML = getBtnHTML(wData.name, wData.image, "ÁLLAPOT: MAX SZINT (LVL 5)", "---"); 
             btn.disabled = true; 
         }
         btn.onclick = () => upgradeWeapon(wData.id, wData.basePrice);
@@ -395,12 +444,12 @@ window.updateShopButtons = function() {
 
     // 2. KÉPESSÉGEK (Augmentációk)
     const skillsData = [
-        { id: 'maxHealth', name: 'KEVLÁR IMPLANT', desc: '+20% Max HP' },
-        { id: 'speed', name: 'CYBER LÁB', desc: '+20% Sebesség' },
-        { id: 'ammoLoot', name: 'LŐSZER ZSEB', desc: '+20% Max Tartalék' },
-        { id: 'healthLoot', name: 'NANOBOTOK', desc: '+20% Gyógyulás' },
-        { id: 'revive', name: 'ÚJRAÉLESZTŐ', desc: '+1 Extra Élet' },
-        { id: 'freeze', name: 'KRIO-GRÁNÁT', desc: '+2 mp Fagyasztás' }
+        { id: 'maxHealth', name: 'KEVLÁR IMPLANT', desc: '+20% Max HP', image: "" },
+        { id: 'speed', name: 'CYBER LÁB', desc: '+20% Sebesség', image: "" },
+        { id: 'ammoLoot', name: 'LŐSZER ZSEB', desc: '+20% Max Tartalék', image: "" },
+        { id: 'healthLoot', name: 'NANOBOTOK', desc: '+20% Gyógyulás', image: "" },
+        { id: 'revive', name: 'ÚJRAÉLESZTŐ', desc: '+1 Extra Élet', image: "" },
+        { id: 'freeze', name: 'KRIO-GRÁNÁT', desc: '+2 mp Fagyasztás', image: "" }
     ];
 
     skillsData.forEach(sData => {
@@ -410,28 +459,22 @@ window.updateShopButtons = function() {
         
         if (s.level < s.maxLevel) { 
             let upgPrice = s.baseCost * (s.level + 1);
-            // Ha Újraélesztő szérumról van szó, akkor a "raktáron lévő darabot" mutatjuk a szint helyett!
             let levelText = sData.id === 'revive' ? `RAKTÁRON: <span style="color:#fff;">${s.level} DB</span>` : `FEJLETTSÉG: LVL <span style="color:#fff;">${s.level}</span> / ${s.maxLevel}`;
-            
-            btn.innerHTML = getBtnHTML(
-                sData.name, 
-                `${levelText}<br><span style="color:#00ffff; font-size: 12px;">HATÁS: ${sData.desc}</span>`, 
-                `KALIBRÁCIÓ: ${upgPrice} CR`
-            ); 
+            btn.innerHTML = getBtnHTML(sData.name, sData.image, `${levelText}<br><span style="color:#00ffff; font-size: 12px;">HATÁS: ${sData.desc}</span>`, `KALIBRÁCIÓ: ${upgPrice} CR`); 
             btn.disabled = score < upgPrice;
         } else { 
-            btn.innerHTML = getBtnHTML(sData.name, "ÁLLAPOT: MAX SZINT", "---"); 
+            btn.innerHTML = getBtnHTML(sData.name, sData.image, "ÁLLAPOT: MAX SZINT", "---"); 
             btn.disabled = true; 
         }
         btn.onclick = () => upgradeSkill(sData.id);
     });
 
-
     // 3. GYORSMŰVELETEK: Lőszer Utánpótlás
     const ammoBtn = document.getElementById('buy-ammo');
     if (ammoBtn) {
         ammoBtn.classList.add('btn-action'); 
-        ammoBtn.innerHTML = getBtnHTML("LŐSZER UTÁNPÓTLÁS", "+25% Tartalék minden fegyverbe", "KÖLTSÉG: 50 CR");
+        // IDE ÜRES STRING ("") MEGY MÁSODIKKÉNT, MERT NINCS KÉP!
+        ammoBtn.innerHTML = getBtnHTML("LŐSZER UTÁNPÓTLÁS", "", "+25% Tartalék minden fegyverbe", "KÖLTSÉG: 50 CR");
         ammoBtn.disabled = score < 50;
         ammoBtn.onclick = () => {
             if (score >= 50) { score -= 50; if (typeof giveGlobalAmmo === 'function') giveGlobalAmmo(); updateShopButtons(); } 
@@ -439,60 +482,78 @@ window.updateShopButtons = function() {
         };
     }
 
-    // 4. ÚJ GYORSMŰVELET: Életerő Visszatöltés (Max HP-ra!)
+    // 4. GYORSMŰVELETEK: Hordozható Medkit Vásárlás (ÚJ!)
+    // Fixen 100 CR-be kerül, és betesz egyet a táskába (max 3-ig).
+    const medkitBtn = document.getElementById('buy-medkit');
+    if (medkitBtn) {
+        medkitBtn.classList.add('btn-heal'); // Pirosas stílus
+        let medkitCost = 100;
+        
+        if (typeof playerMedkits !== 'undefined' && playerMedkits >= maxMedkits) {
+            medkitBtn.innerHTML = getBtnHTML("HORDOZHATÓ MEDKIT", "", "Táska kapacitás elérve.", "KÖLTSÉG: 0 CR");
+            medkitBtn.disabled = true;
+        } else {
+            let healAmount = typeof skills !== 'undefined' ? 40 * (1 + (skills.healthLoot.level * 0.2)) : 40;
+            medkitBtn.innerHTML = getBtnHTML("HORDOZHATÓ MEDKIT", "", `Harc közben (+${healAmount} HP). Készlet: ${playerMedkits}/${maxMedkits}`, `KÖLTSÉG: ${medkitCost} CR`);
+            medkitBtn.disabled = (score < medkitCost);
+        }
+        
+        medkitBtn.onclick = () => {
+            if (playerMedkits < maxMedkits && score >= medkitCost) {
+                score -= medkitCost; 
+                playerMedkits++; 
+                if (typeof playSound === 'function') playSound('heal');
+                updateShopButtons(); 
+            } else flashMoneyError();
+        };
+    }
+
+    // 5. GYORSMŰVELETEK: Instant Gyógyászati Protokoll (Marad a régi)
     const healBtn = document.getElementById('buy-health');
     if (healBtn) {
         healBtn.classList.add('btn-heal'); 
-        // Kiszámoljuk a jelenlegi Max HP-dat
-        let maxHP = typeof skills !== 'undefined' ? 100 + (skills.maxHealth.level * 20) : 100;
-        let missingHP = maxHP - playerHealth;
-        let healCost = Math.ceil(missingHP * 2); // 2 CR / 1 HP arány!
+        let maxHealthVal = typeof skills !== 'undefined' ? 100 + (skills.maxHealth.level * 20) : 100;
+        let missingHP = maxHealthVal - playerHealth;
+        let healCost = Math.ceil(missingHP * 2); 
         
         if (missingHP <= 0) {
-            healBtn.innerHTML = getBtnHTML("GYÓGYÁSZATI PROTOKOLL", "Maximális egészségügyi állapot.", "KÖLTSÉG: 0 CR");
+            healBtn.innerHTML = getBtnHTML("HELYSZÍNI ELLÁTÁS", "", "Maximális egészségügyi állapot.", "KÖLTSÉG: 0 CR");
             healBtn.disabled = true;
         } else {
-            healBtn.innerHTML = getBtnHTML(`GYÓGYÍTÁS (+${Math.floor(missingHP)} HP)`, "Sérülések helyreállítása (Max HP)", `KÖLTSÉG: ${healCost} CR`);
-            // Csak akkor veheti meg, ha van rá pénze ÉS sérült!
+            healBtn.innerHTML = getBtnHTML(`HELYSZÍNI ELLÁTÁS (+${Math.floor(missingHP)} HP)`, "", "Azonnali 100% regeneráció", `KÖLTSÉG: ${healCost} CR`);
             healBtn.disabled = (score < healCost);
         }
         
         healBtn.onclick = () => {
             if (missingHP > 0 && score >= healCost) {
-                score -= healCost;
-                playerHealth = maxHP; // Maxra tölt!
+                score -= healCost; playerHealth = maxHealthVal; 
                 if (typeof playSound === 'function') playSound('heal');
-                
-                // Zöld felvillanás
                 const healFlash = document.getElementById('heal-flash');
                 if (healFlash) { healFlash.style.opacity = 1; setTimeout(() => healFlash.style.opacity = 0, 300); }
-                
                 updateShopButtons(); 
-            } else {
-                flashMoneyError();
-            }
+            } else flashMoneyError();
         };
     }
 
-    // 5. GYORSMŰVELETEK: Sterilizálás
+    // 6. GYORSMŰVELETEK: Sterilizálás
     const puddleCountDisplay = document.getElementById('puddle-count');
     if (puddleCountDisplay) puddleCountDisplay.innerText = toxicPuddles.length;
 
     const cleanBtn = document.getElementById('buy-clean');
-
     if (cleanBtn) {
         cleanBtn.classList.add('btn-action'); 
         let amountToClean = Math.min(10, toxicPuddles.length); 
         let cost = amountToClean * 10; 
         
         if (toxicPuddles.length === 0) {
-            cleanBtn.innerHTML = getBtnHTML("STERILIZÁLÁS PROTOKOLL", "A Szektor mentes minden biomasszától.", "KÖLTSÉG: 0 CR");
+            // ÉS IDE IS ÜRES STRING ("") !
+            cleanBtn.innerHTML = getBtnHTML("STERILIZÁLÁS PROTOKOLL", "", "A Szektor mentes minden biomasszától.", "KÖLTSÉG: 0 CR");
             cleanBtn.disabled = true;
         } else {
-            // Szöveg javítva: Bármilyen pocsolyát takarít!
-            cleanBtn.innerHTML = getBtnHTML(`STERILIZÁLÁS (${amountToClean} db)`, "Toxikus biomassza megsemmisítése a területen.", `KÖLTSÉG: ${cost} CR`);
+            cleanBtn.innerHTML = getBtnHTML(`STERILIZÁLÁS (${amountToClean} db)`, "", "Toxikus biomassza megsemmisítése a területen.", `KÖLTSÉG: ${cost} CR`);
             cleanBtn.disabled = (score < cost);
         }
+       
         
         cleanBtn.onclick = () => {
             if (toxicPuddles.length > 0 && score >= cost) {
@@ -512,48 +573,86 @@ window.updateShopButtons = function() {
     }
 }
 
-// Alap UI frissítés (Lőszer, HP sáv a játékban)
+// Alap UI frissítés (Modern, Minimalista AAA HUD)
 window.updateUI = function() {
+    // 1. ÉLETERŐ ÉS PÁNCÉL FRISSÍTÉSE (Bal alsó sarok)
     let maxHP = 100 + (skills.maxHealth.level * 20);
-    if(healthFill) healthFill.style.width = Math.max(0, (playerHealth / maxHP) * 100) + '%';
-    if(healthFill) healthFill.style.backgroundColor = (playerHealth / maxHP) > 0.6 ? '#00ff00' : (playerHealth / maxHP) > 0.3 ? '#ffaa00' : '#ff0000';
+    
+
+    // Szám és Medkitek frissítése a HUD-on
+    const healthNum = document.getElementById('health-number');
+    if (healthNum) {
+        // Kiírjuk a HP-t, és ha van Medkitünk, odaírjuk kicsiben, hogy hányszor nyomhatunk 'H'-t!
+        let medkitText = playerMedkits > 0 ? `<span style="font-size: 16px; color:#ff5555; vertical-align: top; margin-left: 5px;">[+${playerMedkits}]</span>` : '';
+        healthNum.innerHTML = Math.max(0, Math.floor(playerHealth)) + medkitText;
+    }
+    
+    // Csíkok frissítése (Fehér a tiszta HP, Kék a Páncél)
+    if(healthFill) {
+        healthFill.style.width = Math.max(0, (playerHealth / maxHP) * 100) + '%';
+        // Ha nagyon kevés az élet (20% alatt), akkor pirosra vált a csík és a szám is!
+        if (playerHealth / maxHP <= 0.2) {
+            healthFill.style.background = '#ff0000';
+            healthFill.style.boxShadow = '0 0 15px #ff0000';
+            if (healthNum) healthNum.style.color = '#ff0000';
+        } else {
+            healthFill.style.background = '#fff';
+            healthFill.style.boxShadow = '0 0 10px rgba(255,255,255,0.5)';
+            if (healthNum) healthNum.style.color = '#fff';
+        }
+    }
+    
     if(armorFill) armorFill.style.width = Math.max(0, playerArmor) + '%';
   
-    
-    // --- ÚJ: BÓNUSZ IDŐZÍTŐ KIJELZÉSE ---
+    // 2. BÓNUSZ IDŐZÍTŐ KIJELZÉSE (Fent Középen)
     const timerDisplay = document.getElementById('timer-display');
     if (timerDisplay && isWaveActive) {
-        // Kiszámoljuk, mennyi idő van még hátra a bónuszból
         let waveDuration = clock.getElapsedTime() - waveStartTime;
-        let parTime = enemiesToSpawn * 4; // Ahogy a kódban is volt: 4 másodperc per ellenfél
+        let parTime = enemiesToSpawn * 4; 
         let timeLeft = Math.max(0, parTime - waveDuration);
         
-        // Másodpercek és tizedmásodpercek formázása
         let seconds = Math.floor(timeLeft);
         let millis = Math.floor((timeLeft - seconds) * 10);
         
-        timerDisplay.innerText = `BÓNUSZ IDŐ: 0${seconds}:${millis}0`;
+        timerDisplay.innerText = `00:${seconds < 10 ? '0'+seconds : seconds}.${millis}`;
         
-        // Színváltás feszültségkeltéshez
-        if (timeLeft > parTime * 0.5) {
-            timerDisplay.style.color = '#00ffff'; // Kék, ha van még bőven idő
-            timerDisplay.style.textShadow = '0 0 8px rgba(0, 255, 255, 0.6)';
-        } else if (timeLeft > 0) {
-            timerDisplay.style.color = '#ffaa00'; // Sárga, ha fogyóban
-            timerDisplay.style.textShadow = '0 0 8px rgba(255, 170, 0, 0.6)';
-        } else {
-            timerDisplay.innerText = `BÓNUSZ IDŐ: LEJÁRT`;
-            timerDisplay.style.color = '#ff0000'; // Piros, ha lejárt
-            timerDisplay.style.textShadow = '0 0 8px rgba(255, 0, 0, 0.6)';
-        }
+        if (timeLeft > parTime * 0.5) timerDisplay.style.color = '#fff';
+        else if (timeLeft > 0) timerDisplay.style.color = '#ffaa00';
+        else { timerDisplay.innerText = `00:00.0`; timerDisplay.style.color = '#ff0000'; }
     } else if (timerDisplay && !isWaveActive) {
-        timerDisplay.innerText = ``; // Boltban vagy szünetben elrejtjük
+        timerDisplay.innerText = ``; 
     }
-    // ------------------------------------
 
+    // 3. FEGYVER HUD FRISSÍTÉSE (Jobb alsó sarok)
     let w = weapons[currentWeaponId];
-    if(ammoDisplay) ammoDisplay.innerText = `[ ${w.ammo} / ${w.reserve} ]`;
-    if(weaponInfoDisplay) weaponInfoDisplay.innerText = w.name;
+    
+    // Ide majd képet tehetsz a név helyett!
+    const weaponIcon = document.getElementById('weapon-icon-display');
+    if(weaponIcon) weaponIcon.innerText = (w.name).toUpperCase();
+    
+    const ammoClip = document.getElementById('ammo-clip');
+    const ammoReserve = document.getElementById('ammo-reserve');
+    
+    if(ammoClip) {
+        ammoClip.innerText = w.ammo;
+        // Ha a tár üres, rikító piros
+        if (w.ammo === 0) {
+            ammoClip.style.color = '#ff0000';
+            ammoClip.style.textShadow = '0 0 15px rgba(255,0,0,1)';
+        } 
+        // Ha 30% alatt van, narancs
+        else if (w.ammo <= w.maxAmmo * 0.3) {
+            ammoClip.style.color = '#ffaa00';
+            ammoClip.style.textShadow = '0 0 10px rgba(255,170,0,0.8)';
+        } 
+        // Egyébként gyönyörű ciánkék
+        else {
+            ammoClip.style.color = '#00ffff';
+            ammoClip.style.textShadow = '0 2px 10px rgba(0,255,255,0.5)';
+        }
+    }
+    
+    if(ammoReserve) ammoReserve.innerText = w.reserve;
 }
 
 // --- ÚJ: DIREKTÍVA HUD FRISSÍTÉSE ---
