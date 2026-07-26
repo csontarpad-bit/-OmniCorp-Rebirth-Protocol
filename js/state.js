@@ -3,6 +3,8 @@ var highScore = 0;
 
 var playerHealth = 100;
 var playerArmor = 0; 
+var playerMedkits = 0; 
+var maxMedkits = 3; 
 var score = 0; 
 var currentWave = 1;
 var isWaveActive = false;
@@ -23,15 +25,20 @@ var weapons = {
     super: { name: 'Szuper fegyver', level: 1, damage: 15, ammo: 0, reserve: 0, maxAmmo: 5, maxReserve: 15, pellets: 1, spread: 0, reloadTime: 2500, owned: false, auto: false, fireRate: 0 }
 };
 
-// --- ÚJ: GLOBÁLIS LŐSZER UTÁNPÓTLÁS (25%) ---
-// Ezt hívja meg a Lőszeres doboz és a Terminál is!
+
+// --- GLOBÁLIS LŐSZER UTÁNPÓTLÁS ÉS AUTOMATA TÁRAZÁS ---
 window.giveGlobalAmmo = function() {
     for (let key in weapons) {
         let w = weapons[key];
         if (w.owned) {
-            // Kiszámoljuk az adott fegyver maximum kapacitásának a 25%-át (felfelé kerekítve)
+            // 1. Tár (Clip) automatikus feltöltése a maxra!
+            // Ha kevesebb lőszer volt a tárban, mint amennyi belefér, instant maxra rakjuk!
+            if (w.ammo < w.maxAmmo) {
+                w.ammo = w.maxAmmo;
+            }
+
+            // 2. Tartalék (Reserve) feltöltése +25%-kal
             let fillAmount = Math.ceil(w.maxReserve * 0.25);
-            // Hozzáadjuk a tartalékhoz, de nem engedjük a maxReserve fölé
             w.reserve = Math.min(w.maxReserve, w.reserve + fillAmount);
         }
     }
