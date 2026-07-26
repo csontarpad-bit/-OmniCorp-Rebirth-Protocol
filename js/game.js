@@ -785,12 +785,27 @@ window.addEventListener('keydown', (e) => {
     let key = e.key.toLowerCase(); 
     if (key in keys) keys[key] = true; 
     
-    // --- ÚJ: MANUÁLIS ÚJRATÖLTÉS ("R" GOMB) ---
+    // --- MANUÁLIS ÚJRATÖLTÉS ("R" GOMB) ---
     if (key === 'r' && gameState === 'PLAYING' && !isReloading) {
         let wpn = weapons[currentWeaponId];
-        // Csak akkor tölt újra, ha nincs tele a tár, ÉS van tartalék lőszere!
-        if (wpn.ammo < wpn.maxAmmo && wpn.reserve > 0) {
-            startReloading(wpn);
+        if (wpn.ammo < wpn.maxAmmo && wpn.reserve > 0) startReloading(wpn);
+    }
+
+    // --- ÚJ: MEDKIT HASZNÁLATA ("H" GOMB) ---
+    if (key === 'h' && gameState === 'PLAYING') {
+        let maxHP = 100 + (skills.maxHealth.level * 20);
+        // Csak akkor használhatja, ha van a táskájában ÉS sérült!
+        if (playerMedkits > 0 && playerHealth < maxHP) {
+            playerMedkits--; // Kivesz egyet a táskából
+            
+            // Kiszámoljuk a gyógyulás mértékét (A Nanobot képesség ezt is növeli!)
+            let healAmount = 40 * (1 + (skills.healthLoot.level * 0.2));
+            playerHealth = Math.min(maxHP, playerHealth + healAmount); 
+            
+            playSound('heal'); 
+            const healFlash = document.getElementById('heal-flash');
+            if (healFlash) { healFlash.style.opacity = 1; setTimeout(() => healFlash.style.opacity = 0, 300); }
+            if (typeof updateUI === 'function') updateUI();
         }
     }
 });
@@ -1671,39 +1686,68 @@ function animate() {
 
     // --- MEDKIT FELVÉTELE ---
     for (let i = medkits.length - 1; i >= 0; i--) { 
-        const mk = medkits[i]; mk.floatTime += 0.05; mk.mesh.position.y = mk.startY + Math.sin(mk.floatTime) * 0.3; 
+        const mk = medkits[i]; 
+        mk.floatTime += 0.05; 
+        mk.mesh.position.y = mk.startY + Math.sin(mk.floatTime) * 0.3; 
+        
         if (Math.hypot(savedCamX - mk.mesh.position.x, camera.position.z - mk.mesh.position.z) < 1.5) { 
-            playSound('heal'); 
-            const healFlash = document.getElementById('heal-flash');
-            if (healFlash) { healFlash.style.opacity = 1; setTimeout(() => healFlash.style.opacity = 0, 200); }
             
-            // ÉLET LOOT FEJLESZTÉS:
             let maxHP = 100 + (skills.maxHealth.level * 20);
-            let healAmount = 40 * (1 + (skills.healthLoot.level * 0.2));
-            playerHealth = Math.min(maxHP, playerHealth + healAmount); 
-            
-            if (typeof updateUI === 'function') updateUI(); 
-            scene.remove(mk.mesh); 
-            medkits.splice(i, 1); 
-            // FIGYELEM: KIVETTÜK A SETTIMEOUT RESPAWN-T!
+            let tookMedkit = false;
+
+            // 1. ESET: Sérültek vagyunk -> Azonnal elhasználjuk a Medkitet
+            if (playerHealth < maxHP) {
+                let healAmount = 40 * (1 + (skills.healthLoot.level * 0.2));
+                playerHealth = Math.min(maxHP, playerHealth + healAmount); 
+                tookMedkit = true;
+            } 
+            // 2. ESET: Tele az élet, de van hely a hátizsákban -> Eltesszük későbbre!
+            else if (playerMedkits < maxMedkits) {
+                playerMedkits++;
+                tookMedkit = true;
+            }
+
+            // Ha felvettük (akár azonnal, akár táskába), eltüntetjük a pályáról
+            if (tookMedkit) {
+                playSound('heal'); 
+                const healFlash = document.getElementById('heal-flash');
+                if (healFlash) { healFlash.style.opacity = 1; setTimeout(() => healFlash.style.opacity = 0, 200); }
+                
+                if (typeof updateUI === 'function') updateUI(); 
+                scene.remove(mk.mesh); 
+                medkits.splice(i, 1); 
+            }
         }
     }
     
     // --- LŐSZER FELVÉTELE ---
     for (let i = ammoBoxes.length - 1; i >= 0; i--) { 
-        const ab = ammoBoxes[i]; ab.floatTime += 0.05; ab.mesh.position.y = ab.startY + Math.sin(ab.floatTime) * 0.2; 
+        const ab = ammoBoxes[i]; 
+        ab.floatTime += 0.05; 
+        ab.mesh.position.y = ab.startY + Math.sin(ab.floatTime) * 0.2; 
+        
         if (Math.hypot(savedCamX - ab.mesh.position.x, camera.position.z - ab.mesh.position.z) < 1.5) { 
-            playSound('ammo'); 
-            const ammoFlash = document.getElementById('ammo-flash'); 
-            if(ammoFlash) { ammoFlash.style.opacity = 1; setTimeout(() => ammoFlash.style.opacity = 0, 200); }
-           
-            // ÚJ LOGIKA: A Globális Töltő függvényt hívjuk meg! Nincs több loot-szorzó!
-            if (typeof giveGlobalAmmo === 'function') giveGlobalAmmo();
+            
+            // ELENŐRZÉS: Van-e OLYAN fegyverünk, amibe még fér lőszer?
+            let needsAmmo = false;
+            for (let key in weapons) {
+                if (weapons[key].owned && weapons[key].reserve < weapons[key].maxReserve) {
+                    needsAmmo = true; break;
+                }
+            }
 
-            if (typeof updateUI === 'function') updateUI(); 
-            scene.remove(ab.mesh); 
-            ammoBoxes.splice(i, 1); 
-            // FIGYELEM: KIVETTÜK A SETTIMEOUT RESPAWN-T!
+            // Ha tele van minden, BÉKÉN HAGYJUK a dobozt!
+            if (needsAmmo) {
+                playSound('ammo'); 
+                const ammoFlash = document.getElementById('ammo-flash'); 
+                if(ammoFlash) { ammoFlash.style.opacity = 1; setTimeout(() => ammoFlash.style.opacity = 0, 200); }
+               
+                if (typeof giveGlobalAmmo === 'function') giveGlobalAmmo();
+    
+                if (typeof updateUI === 'function') updateUI(); 
+                scene.remove(ab.mesh); 
+                ammoBoxes.splice(i, 1); 
+            }
         } 
     }
     
