@@ -114,22 +114,27 @@ window.closeLightbox = function() {
 
 
 
+
 // --- LISTA GENERÁLÁSA A KATEGÓRIA ALAPJÁN ---
 function renderArchiveList() {
     archiveList.innerHTML = '';
     archiveContent.innerHTML = "<div style='text-align:center; color:#005555; margin-top:20px;'>Válasszon ki egy bejegyzést a dekódoláshoz.</div>";
 
     if (currentArchiveCategory === 'lore') {
-        // A lore-nak is átadjuk a saját statisztikáját!
-        createArchiveButton(OmniCorpDatabase.lore.title, OmniCorpDatabase.lore.text, true, null, OmniCorpDatabase.lore.image, OmniCorpDatabase.lore.statInfo());
+        // JAVÍTÁS: Lekérdezzük a szöveget, mielőtt átadjuk a gépelőnek!
+        let loreText = typeof OmniCorpDatabase.lore.text === 'function' ? OmniCorpDatabase.lore.text() : OmniCorpDatabase.lore.text;
+        createArchiveButton(OmniCorpDatabase.lore.title, loreText, true, null, OmniCorpDatabase.lore.image, OmniCorpDatabase.lore.statInfo());
     } else {
         let dataArray = OmniCorpDatabase[currentArchiveCategory];
         if (dataArray) {
             dataArray.forEach(item => {
                 let isUnlocked = item.checkUnlock ? item.checkUnlock() : true;
-                // ÚJ: A 'statInfo' futtatása, ami visszaadja a szöveget a kill/level számokkal!
                 let statText = item.statInfo ? item.statInfo() : null; 
-                createArchiveButton(item.title, item.text, isUnlocked, item.requirementText, item.image, statText);
+                
+                // JAVÍTÁS ITT IS: Mert az Alpha Boss szövege is dinamikus lett!
+                let actualText = typeof item.text === 'function' ? item.text() : item.text;
+                
+                createArchiveButton(item.title, actualText, isUnlocked, item.requirementText, item.image, statText);
             });
         }
     }
@@ -517,19 +522,18 @@ skillsData.forEach(sData => {
         };
     }
 
-    // 4. GYORSMŰVELETEK: Hordozható Medkit Vásárlás (ÚJ!)
-    // Fixen 100 CR-be kerül, és betesz egyet a táskába (max 3-ig).
+    // 4. GYORSMŰVELETEK: Gen-Stab Vásárlás
     const medkitBtn = document.getElementById('buy-medkit');
     if (medkitBtn) {
-        medkitBtn.classList.add('btn-heal'); // Pirosas stílus
+        medkitBtn.classList.add('btn-heal'); 
         let medkitCost = 100;
         
         if (typeof playerMedkits !== 'undefined' && playerMedkits >= maxMedkits) {
-            medkitBtn.innerHTML = getBtnHTML("HORDOZHATÓ MEDKIT", "", "Táska kapacitás elérve.", "KÖLTSÉG: 0 CR");
+            medkitBtn.innerHTML = getBtnHTML("GEN-STAB KÉSZLET", "", "Injekciós rekesz kapacitása maximális.", "KÖLTSÉG: 0 CR");
             medkitBtn.disabled = true;
         } else {
             let healAmount = typeof skills !== 'undefined' ? 40 * (1 + (skills.healthLoot.level * 0.2)) : 40;
-            medkitBtn.innerHTML = getBtnHTML("HORDOZHATÓ MEDKIT", "", `Harc közben (+${healAmount} HP). Készlet: ${playerMedkits}/${maxMedkits}`, `KÖLTSÉG: ${medkitCost} CR`);
+            medkitBtn.innerHTML = getBtnHTML("GEN-STAB SZINTÉZIS", "", `Gyors-gyógyítás (+${healAmount} HP). Rekesz: ${playerMedkits}/${maxMedkits}`, `KÖLTSÉG: ${medkitCost} CR`);
             medkitBtn.disabled = (score < medkitCost);
         }
         
@@ -552,10 +556,12 @@ skillsData.forEach(sData => {
         let healCost = Math.ceil(missingHP * 2); 
         
         if (missingHP <= 0) {
-            healBtn.innerHTML = getBtnHTML("HELYSZÍNI ELLÁTÁS", "", "Maximális egészségügyi állapot.", "KÖLTSÉG: 0 CR");
+
+            healBtn.innerHTML = getBtnHTML("BIOLÓGIAI HELYREÁLLÍTÁS", "", "A klóntest állapota stabil (100%).", "KÖLTSÉG: 0 CR");
             healBtn.disabled = true;
         } else {
-            healBtn.innerHTML = getBtnHTML(`HELYSZÍNI ELLÁTÁS (+${Math.floor(missingHP)} HP)`, "", "Azonnali 100% regeneráció", `KÖLTSÉG: ${healCost} CR`);
+
+            healBtn.innerHTML = getBtnHTML(`BIOLÓGIAI HELYREÁLLÍTÁS (+${Math.floor(missingHP)} HP)`, "", "Azonnali, teljes sejtszintű regeneráció.", `KÖLTSÉG: ${healCost} CR`);
             healBtn.disabled = (score < healCost);
         }
         
@@ -949,7 +955,7 @@ function renderDirectivesTab(tier) {
         dirContent.innerHTML = `
             <div style="display: flex; gap: 20px;">
                 <div style="flex: 1;">
-                    <img src="https://raw.githubusercontent.com/csontarpad-bit/glb-t-r/5fcee7cf3f3f0e88f7fee28af836805a55f9490a/OmniCorp.jpeg" style="width: 100%; border: 2px solid #00ffff; box-shadow: 0 0 15px rgba(0,255,255,0.3); border-radius: 5px;">
+                    <img src="https://raw.githubusercontent.com/csontarpad-bit/ OmniCorp: Rebirth Protocol/5fcee7cf3f3f0e88f7fee28af836805a55f9490a/OmniCorp.jpeg" style="width: 100%; border: 2px solid #00ffff; box-shadow: 0 0 15px rgba(0,255,255,0.3); border-radius: 5px;">
                 </div>
                 <div style="flex: 2; color:#e0ffff; font-size:16px; line-height:1.6; font-family: 'Share Tech Mono', monospace;">
                     <h3 style="color:#00ffff; margin-bottom: 10px;">TEREPI ADATGYŰJTÉSI PROTOKOLL</h3>
