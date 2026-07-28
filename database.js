@@ -204,7 +204,7 @@ const OmniCorpDatabase = {
             requirementText: "FELOLDÁS: Alapértelmezett felszerelés.",
             checkUnlock: () => true,
             statInfo: () => `<div style="text-align:center;">AKTUÁLIS FEJLETTSÉG: ${typeof weapons !== 'undefined' ? weapons.pistol.level : 1} / 5. SZINT</div>`,
-            image: "https://via.placeholder.com/300x200/001111/00ffff?text=PISZTOLY_KEP",
+            image: "https://raw.githubusercontent.com/csontarpad-bit/glb-t-r/45abc3b3555b01cf93886d8560800ff7f3c5871c/pisztoly.png",
             text: "Az OmniCorp szabványos, könnyű kézifegyvere.\n\nA karanténzónában a logisztika lehetetlen, ezért a Takarítók fegyverzetét az offline Terminálokba épített Ipari 3D Nyomtatók biztosítják. A begyűjtött harci adatokért (Kredit) cserébe a nyomtató képes fegyver-alkatrészeket és lőszert szintetizálni."
         },
         {
@@ -213,7 +213,7 @@ const OmniCorpDatabase = {
             requirementText: "FELOLDÁS: Vásárolja meg a Terminálon.",
             checkUnlock: () => playerStats.weaponsBought.shotgun,
             statInfo: () => `<div style="text-align:center;">AKTUÁLIS FEJLETTSÉG: ${typeof weapons !== 'undefined' ? weapons.shotgun.level : 1} / 5. SZINT</div>`,
-            image: "https://via.placeholder.com/300x200/001111/00ffff?text=SORETES_KEP",
+            image: "https://raw.githubusercontent.com/csontarpad-bit/glb-t-r/45abc3b3555b01cf93886d8560800ff7f3c5871c/sz%C3%B6r%C3%A9tes.png",
             text: "Közeli célpontok és tömegek ellen fejlesztett, masszív kinetikus erővel rendelkező fegyver.\n\nFEJLESZTÉSI FÁZISOK:\n- Szint 2: Tárkapacitás (Reserve) növelése 150%-ra.\n- Szint 3: Újratöltési idő (Reload) csökkentése 25%-kal.\n- Szint 4: Tárfogadók (Max Ammo) bővítése 150%-ra.\n- Szint 5: Páncéltörő lőszerek szintetizálása (Dupla Sebzés)."
         },
         {
@@ -222,7 +222,7 @@ const OmniCorpDatabase = {
             requirementText: "FELOLDÁS: Vásárolja meg a Terminálon.",
             checkUnlock: () => playerStats.weaponsBought.rifle,
             statInfo: () => `<div style="text-align:center;">AKTUÁLIS FEJLETTSÉG: ${typeof weapons !== 'undefined' ? weapons.rifle.level : 1} / 5. SZINT</div>`,
-            image: "https://via.placeholder.com/300x200/001111/00ffff?text=GEPFEGYVER_KEP",
+            image: "https://raw.githubusercontent.com/csontarpad-bit/glb-t-r/df39681a8668bd04e80660051e5755ff31995ba7/g%C3%A9gkarab%C3%A9ly.png",
             text: "Nagy tűzgyorsaságú rohamkarabély, amely alkalmas a folyamatos terület-elnyomásra (Area Denial).\n\nFEJLESZTÉSI FÁZISOK:\n- Szint 2: Tárkapacitás (Reserve) növelése 150%-ra.\n- Szint 3: Újratöltési idő (Reload) csökkentése 25%-kal.\n- Szint 4: Tárfogadók (Max Ammo) bővítése 150%-ra.\n- Szint 5: Páncéltörő lőszerek szintetizálása (Dupla Sebzés)."
         },
         {
@@ -231,17 +231,17 @@ const OmniCorpDatabase = {
             requirementText: "FELOLDÁS: Vásárolja meg a Terminálon.",
             checkUnlock: () => playerStats.weaponsBought.super,
             statInfo: () => `<div style="text-align:center;">AKTUÁLIS FEJLETTSÉG: ${typeof weapons !== 'undefined' ? weapons.super.level : 1} / 5. SZINT</div>`,
-            image: "https://via.placeholder.com/300x200/001111/00ffff?text=REVOLVER_KEP",
+            image: "https://raw.githubusercontent.com/csontarpad-bit/glb-t-r/df39681a8668bd04e80660051e5755ff31995ba7/revolver.png",
             text: "A végső megállító erő. Egy masszív kaliberű revolver, amely kifejezetten a vastag páncélzattal és magas életerővel rendelkező mutánsok (pl. Tankok és Kaptárőrök) ellen készült.\n\nEgyedi, ipari 3D nyomtatott páncéltörő lőszerével képes átszakítani a legerősebb bio-mechanikus rétegeket is."
         },
-        {
+     {
             id: "skill_kevlar",
-            title: "AUGMENTATION: KEVLAR IMPLANT",
+            title: "AUGMENTATION: TISSUE DENSIFIER", // <-- Névcsere
             requirementText: "FELOLDÁS: Vásárolja meg a képességet a Terminálon.",
             checkUnlock: () => playerStats.skillsBought >= 1,
             statInfo: () => `<div style="text-align:center;">AKTUÁLIS FEJLETTSÉG: ${typeof skills !== 'undefined' ? skills.maxHealth.level : 0} / 5. SZINT</div>`,
-            image: "https://via.placeholder.com/300x200/001111/00ffff?text=KEVLAR_KEP",
-            text: "A Takarítók teste alapvető kibernetikus implantátumokkal van felszerelve, amelyek a Termináloknál frissíthetők.\n\nKEVLÁR IMPLANTÁTUM: +20% Maximális Életerő szintenként."
+            image: "https://via.placeholder.com/300x200/001111/00ffff?text=SZOVSUR_KEP",
+            text: "A Takarítók teste alapvető kibernetikus implantátumokkal van felszerelve, amelyek a Termináloknál frissíthetők.\n\nSZÖVET SŰRŰSÍTŐ: Molekuláris szinten megnöveli az izom- és bőrszövet ellenállását. Szintenként +20% Maximális Életerőt (HP) biztosít a gazdatestnek." // <-- Szövegcsere
         },
         {
             id: "skill_legs",
@@ -281,12 +281,12 @@ const OmniCorpDatabase = {
         },
         {
             id: "skill_cryo",
-            title: "AUGMENTATION: CRYO GRENADE",
-            requirementText: "FELOLDÁS: Vásárolja meg a képességet a Terminálon.",
+            title: "TERMINAL OVERRIDE: CRYO-PURGE",
+            requirementText: "FELOLDÁS: Vásárolja meg a hozzáférést a Terminálon.",
             checkUnlock: () => playerStats.skillsBought >= 1,
-            statInfo: () => `<div style="text-align:center;">AKTUÁLIS FEJLETTSÉG: ${typeof skills !== 'undefined' ? skills.freeze.level : 0} / 5. SZINT</div>`,
-            image: "https://via.placeholder.com/300x200/001111/00ffff?text=KRIO_KEP",
-            text: "A Takarítók teste alapvető kibernetikus implantátumokkal van felszerelve, amelyek a Termináloknál frissíthetők.\n\nCRYO GRENADE: A bal karba épített folyékony-nitrogén vető. Megfagyasztja a mutánsokat, megállítva a mozgásukat és a mutációjukat."
+            statInfo: () => `<div style="text-align:center;">BIZTONSÁGI SZINT:<br>${typeof skills !== 'undefined' ? skills.freeze.level : 0} / 5. SZINT</div>`,
+            image: "https://raw.githubusercontent.com/csontarpad-bit/glb-t-r/9807e89295cfc8f0ba0b95ab93aaa0180b8b8d41/cryo.jpeg", 
+            text: "Eredeti funkció: Központi, precíziós klímaszabályozó rendszer. A 'Project Rebirth' mintái rendkívül gyors reakcióidővel rendelkeztek magasabb hőmérsékleten, ezért a kísérleti térben állandó, alacsony hőmérsékletet kellett biztosítani. Ez garantálta, hogy a sejtburjánzás vizsgálata menedzselhető, stabil tempóban haladhasson.\n\nJelenlegi állapot: A rendszert nem extérm fagyasztásra tervezték; technikai korlátai miatt klimatikus hűtésre optimalizálták. A központi AI leállítása és az automatika meghibásodása miatt a rendszer manuális felülbírálatot (Override) igényel. A Takarító a PDA-járól túlterheli a hűtőkört, kényszerítve az egységet, hogy hirtelen, maximális teljesítménnyel engedje ki a folyékony nitrogént.\n\nMűködtetése: Ez a drasztikus túlterhelés magyarázza, miért csak nagyon rövid ideig működtethető fagyasztó zónaként. Figyelem: Ez szoftver-licenc bővítés, nem fizikai fegyverfejlesztés. Magasabb hozzáférési szint vásárlásával a PDA finomhangolja az overdrive-szekvenciát, növelve az overload hatékonyságát, így a fagyasztás időtartama kismértékben meghosszabbítható (Szintenként +2 mp)."
         }
     ]
 };
