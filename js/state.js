@@ -1,6 +1,10 @@
 var gameState = 'LOADING'; 
 var highScore = 0;
 
+var globalVolume = 1.0;
+var globalBrightness = 1.0;
+var mouseSensitivity = 0.003;
+
 var playerHealth = 100;
 var playerArmor = 0; 
 var playerMedkits = 0; 
@@ -12,17 +16,20 @@ var enemiesToSpawn = 5;
 var isReloading = false;
 var bloodOpacity = 0;
 var cameraShake = 0; 
+// A "waveStartTime" környékére szúrd be ezeket:
 var waveStartTime = 0;
+var pauseStartTime = 0; 
+var totalPausedTime = 0;   
 var lastWaveBonus = 0;
 var isShootingBtnPressed = false;
 var autoShootTimer = 0;
 
-// --- ÚJ: FEGYVEREK (Kiegészítve a 'level' tulajdonsággal) ---
+// --- ÚJ: FEGYVEREK (Kiegészítve a 'level' és az 'image' tulajdonsággal) ---
 var weapons = {
-    pistol: { name: 'Pisztoly', level: 1, damage: 1, ammo: 10, reserve: 30, maxAmmo: 10, maxReserve: 30, pellets: 1, spread: 0, reloadTime: 1500, owned: true, auto: false, fireRate: 0 },
-    shotgun: { name: 'Sörétes', level: 1, damage: 1.2, ammo: 0, reserve: 0, maxAmmo: 6, maxReserve: 24, pellets: 6, spread: 0.15, reloadTime: 2000, owned: false, auto: false, fireRate: 0 },
-    rifle: { name: 'Gépkarabély', level: 1, damage: 0.8, ammo: 0, reserve: 0, maxAmmo: 30, maxReserve: 90, pellets: 1, spread: 0.05, reloadTime: 1800, owned: false, auto: true, fireRate: 0.12 },
-    super: { name: 'Szuper fegyver', level: 1, damage: 15, ammo: 0, reserve: 0, maxAmmo: 5, maxReserve: 15, pellets: 1, spread: 0, reloadTime: 2500, owned: false, auto: false, fireRate: 0 }
+    pistol: { name: 'Pisztoly', level: 1, damage: 1, ammo: 10, reserve: 30, maxAmmo: 10, maxReserve: 30, pellets: 1, spread: 0, reloadTime: 1500, owned: true, auto: false, fireRate: 0, image: "https://raw.githubusercontent.com/csontarpad-bit/glb-t-r/45abc3b3555b01cf93886d8560800ff7f3c5871c/pisztoly.png" },
+    shotgun: { name: 'Sörétes', level: 1, damage: 1.2, ammo: 0, reserve: 0, maxAmmo: 6, maxReserve: 24, pellets: 6, spread: 0.15, reloadTime: 2000, owned: false, auto: false, fireRate: 0, image: "https://raw.githubusercontent.com/csontarpad-bit/glb-t-r/45abc3b3555b01cf93886d8560800ff7f3c5871c/sz%C3%B6r%C3%A9tes.png" },
+    rifle: { name: 'Gépkarabély', level: 1, damage: 0.8, ammo: 0, reserve: 0, maxAmmo: 30, maxReserve: 90, pellets: 1, spread: 0.05, reloadTime: 1800, owned: false, auto: true, fireRate: 0.12, image: "https://raw.githubusercontent.com/csontarpad-bit/glb-t-r/df39681a8668bd04e80660051e5755ff31995ba7/g%C3%A9gkarab%C3%A9ly.png" },
+    super: { name: 'Szuper fegyver', level: 1, damage: 15, ammo: 0, reserve: 0, maxAmmo: 5, maxReserve: 15, pellets: 1, spread: 0, reloadTime: 2500, owned: false, auto: false, fireRate: 0, image: "https://raw.githubusercontent.com/csontarpad-bit/glb-t-r/df39681a8668bd04e80660051e5755ff31995ba7/revolver.png" }
 };
 
 
@@ -89,6 +96,10 @@ var particles = [];
 var radParticles = []; 
 var toxicPuddles = []; 
 var toxicTickTimer = 0; 
+
+// --- ÚJ: HULLÁK ÉS POOLING TÖMBÖK ---
+var deadBodies = []; // Ide kerülnek a földön fekvő hullák
+var zombiePool = []; // Ide kerülnek a padlóba süllyedt, újrahasznosítható zombik
 
 var scene, camera, renderer, clock, listener, muzzleFlash, playerLight;
 var gunMixer, gunShootAction;
