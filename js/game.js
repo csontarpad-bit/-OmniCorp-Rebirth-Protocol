@@ -181,23 +181,23 @@ function loadSound(name, url, volume = 1.0, isLoop = false) {
         if (name === 'music' && listener.context.state === 'running') sound.play();
     });
 }
-loadSound('cryoGas', 'https://raw.githubusercontent.com/csontarpad-bit/glb-t-r/5abe88d4b8b1dd33f0887daa25511297b89eecbd/cryo%20gas.mp3', 0.8);
-loadSound('iceCrack', 'https://raw.githubusercontent.com/csontarpad-bit/glb-t-r/46c22b763dcc098c3c6581afdfbccad22203c429/ice%20brake.mp3', 0.5); // Halkabbra vesszük, ez csak háttérzaj
-loadSound('footstep', 'https://raw.githubusercontent.com/csontarpad-bit/glb-t-r/dd55e7027743a8ed1ec9aa2c9bd70895c3605773/foot%20%20step.mp3', 0.8);
-loadSound('deathScream', 'https://raw.githubusercontent.com/csontarpad-bit/glb-t-r/dd55e7027743a8ed1ec9aa2c9bd70895c3605773/Death%20scream.mp3', 1.0);
-loadSound('burst', 'https://raw.githubusercontent.com/csontarpad-bit/glb-t-r/df6d333b9936fa81cffbce5c2bdb8891eaf9ee37/burst.mp3', 1.0);
-loadSound('bossAttack', 'https://raw.githubusercontent.com/csontarpad-bit/glb-t-r/7881058577cd484c3ba7beba64556801e1704209/boss%20screem.mp3', 1.0);
-loadSound('cry', 'https://raw.githubusercontent.com/csontarpad-bit/glb-t-r/40bf509427fc680fb017d8e5c47594250ad9ae93/cry.mp3', 1.0);
-loadSound('glitch', 'https://raw.githubusercontent.com/csontarpad-bit/glb-t-r/102a0d507c37ef59b9aeb075e1b30110c95f3b3f/noice02.mp3', 1.0);
-loadSound('music', 'https://raw.githubusercontent.com/csontarpad-bit/glb-t-r/f162302b83992b9adfe75b1c3ade387a25e2478d/music.mp3', 0.3, true); 
-loadSound('menuMusic', 'https://raw.githubusercontent.com/csontarpad-bit/glb-t-r/212958c21ddceb0db80820c1d91b06b7d9a5a950/main.m4a', 0.5, true); 
-loadSound('ammo', 'https://raw.githubusercontent.com/csontarpad-bit/glb-t-r/7bc7874a7ddc6802b16f0d3eafb82b2b4860e125/ammo%20box.mp3', 1.0);
-loadSound('shoot', 'https://raw.githubusercontent.com/csontarpad-bit/glb-t-r/7bc7874a7ddc6802b16f0d3eafb82b2b4860e125/gun%20shoot.mp3', 0.7);
-loadSound('heal', 'https://raw.githubusercontent.com/csontarpad-bit/glb-t-r/7bc7874a7ddc6802b16f0d3eafb82b2b4860e125/heal.mp3', 1.0);
-loadSound('hurt', 'https://raw.githubusercontent.com/csontarpad-bit/glb-t-r/7bc7874a7ddc6802b16f0d3eafb82b2b4860e125/me%20get%20hit.mp3', 1.0);
-loadSound('reload', 'https://raw.githubusercontent.com/csontarpad-bit/glb-t-r/7bc7874a7ddc6802b16f0d3eafb82b2b4860e125/reload.mp3', 1.0);
-loadSound('zombieHit', 'https://raw.githubusercontent.com/csontarpad-bit/glb-t-r/7bc7874a7ddc6802b16f0d3eafb82b2b4860e125/zombie%20get%20hit.mp3', 1.0);
-loadSound('zombieDie', 'https://raw.githubusercontent.com/csontarpad-bit/glb-t-r/1f5b9cfe04d0b19f99fdb0b263ba582b429f4f92/zombie%20die.mp3', 1.0);
+loadSound('cryoGas', 'https://raw.githubusercontent.com/csontarpad-bit/ OmniCorp: Rebirth Protocol/5abe88d4b8b1dd33f0887daa25511297b89eecbd/cryo%20gas.mp3', 0.8);
+loadSound('iceCrack', 'https://raw.githubusercontent.com/csontarpad-bit/ OmniCorp: Rebirth Protocol/46c22b763dcc098c3c6581afdfbccad22203c429/ice%20brake.mp3', 0.5); // Halkabbra vesszük, ez csak háttérzaj
+loadSound('footstep', 'https://raw.githubusercontent.com/csontarpad-bit/ OmniCorp: Rebirth Protocol/dd55e7027743a8ed1ec9aa2c9bd70895c3605773/foot%20%20step.mp3', 0.8);
+loadSound('deathScream', 'https://raw.githubusercontent.com/csontarpad-bit/ OmniCorp: Rebirth Protocol/dd55e7027743a8ed1ec9aa2c9bd70895c3605773/Death%20scream.mp3', 1.0);
+loadSound('burst', 'https://raw.githubusercontent.com/csontarpad-bit/ OmniCorp: Rebirth Protocol/df6d333b9936fa81cffbce5c2bdb8891eaf9ee37/burst.mp3', 1.0);
+loadSound('bossAttack', 'https://raw.githubusercontent.com/csontarpad-bit/ OmniCorp: Rebirth Protocol/7881058577cd484c3ba7beba64556801e1704209/boss%20screem.mp3', 1.0);
+loadSound('cry', 'https://raw.githubusercontent.com/csontarpad-bit/ OmniCorp: Rebirth Protocol/40bf509427fc680fb017d8e5c47594250ad9ae93/cry.mp3', 1.0);
+loadSound('glitch', 'https://raw.githubusercontent.com/csontarpad-bit/ OmniCorp: Rebirth Protocol/102a0d507c37ef59b9aeb075e1b30110c95f3b3f/noice02.mp3', 1.0);
+loadSound('music', 'https://raw.githubusercontent.com/csontarpad-bit/ OmniCorp: Rebirth Protocol/f162302b83992b9adfe75b1c3ade387a25e2478d/music.mp3', 0.3, true); 
+loadSound('menuMusic', 'https://raw.githubusercontent.com/csontarpad-bit/ OmniCorp: Rebirth Protocol/212958c21ddceb0db80820c1d91b06b7d9a5a950/main.m4a', 0.5, true); 
+loadSound('ammo', 'https://raw.githubusercontent.com/csontarpad-bit/ OmniCorp: Rebirth Protocol/7bc7874a7ddc6802b16f0d3eafb82b2b4860e125/ammo%20box.mp3', 1.0);
+loadSound('shoot', 'https://raw.githubusercontent.com/csontarpad-bit/ OmniCorp: Rebirth Protocol/7bc7874a7ddc6802b16f0d3eafb82b2b4860e125/gun%20shoot.mp3', 0.7);
+loadSound('heal', 'https://raw.githubusercontent.com/csontarpad-bit/ OmniCorp: Rebirth Protocol/7bc7874a7ddc6802b16f0d3eafb82b2b4860e125/heal.mp3', 1.0);
+loadSound('hurt', 'https://raw.githubusercontent.com/csontarpad-bit/ OmniCorp: Rebirth Protocol/7bc7874a7ddc6802b16f0d3eafb82b2b4860e125/me%20get%20hit.mp3', 1.0);
+loadSound('reload', 'https://raw.githubusercontent.com/csontarpad-bit/ OmniCorp: Rebirth Protocol/7bc7874a7ddc6802b16f0d3eafb82b2b4860e125/reload.mp3', 1.0);
+loadSound('zombieHit', 'https://raw.githubusercontent.com/csontarpad-bit/ OmniCorp: Rebirth Protocol/7bc7874a7ddc6802b16f0d3eafb82b2b4860e125/zombie%20get%20hit.mp3', 1.0);
+loadSound('zombieDie', 'https://raw.githubusercontent.com/csontarpad-bit/ OmniCorp: Rebirth Protocol/1f5b9cfe04d0b19f99fdb0b263ba582b429f4f92/zombie%20die.mp3', 1.0);
 
 window.unlockAudio = function() {
     if (listener.context.state === 'suspended') listener.context.resume();
@@ -231,9 +231,9 @@ window.playHitmarkerSound = function() {
 // ==========================================
 const textureLoader = new THREE.TextureLoader(); 
 // VISSZAÁLLÍTVA A RÉGI MŰKÖDŐ BETÖLTÉSRE
-const floorTex = textureLoader.load('https://raw.githubusercontent.com/csontarpad-bit/glb-t-r/6ff430b224fb8cd358b83fade1e06710d708d094/1783431196560.png'); 
+const floorTex = textureLoader.load('https://raw.githubusercontent.com/csontarpad-bit/ OmniCorp: Rebirth Protocol/6ff430b224fb8cd358b83fade1e06710d708d094/1783431196560.png'); 
 floorTex.wrapS = THREE.RepeatWrapping; floorTex.wrapT = THREE.RepeatWrapping; floorTex.repeat.set(10, 10); 
-const wallTex = textureLoader.load('https://raw.githubusercontent.com/csontarpad-bit/glb-t-r/6ff430b224fb8cd358b83fade1e06710d708d094/1783431502863.png'); 
+const wallTex = textureLoader.load('https://raw.githubusercontent.com/csontarpad-bit/ OmniCorp: Rebirth Protocol/6ff430b224fb8cd358b83fade1e06710d708d094/1783431502863.png'); 
 wallTex.wrapS = THREE.RepeatWrapping; wallTex.wrapT = THREE.RepeatWrapping; wallTex.repeat.set(4, 1); 
 
 const floorMat = new THREE.MeshStandardMaterial({ map: floorTex, roughness: 0.9, metalness: 0.1 }); 
@@ -269,29 +269,29 @@ window.checkWallCollision = function(x, z, r) {
 
 const gltfLoader = new THREE.GLTFLoader();
 
-gltfLoader.load('https://raw.githubusercontent.com/csontarpad-bit/glb-t-r/061e749b34c35aa535f6a41895cdeaebaa6f4d1c/flesh_bomb.glb', (gltf) => {
+gltfLoader.load('https://raw.githubusercontent.com/csontarpad-bit/ OmniCorp: Rebirth Protocol/061e749b34c35aa535f6a41895cdeaebaa6f4d1c/flesh_bomb.glb', (gltf) => {
     plantModel = gltf.scene; 
     plantAnimations = gltf.animations; 
     plantModel.traverse((c) => { if(c.isMesh) c.frustumCulled = false; }); 
 });
 
-gltfLoader.load('https://raw.githubusercontent.com/csontarpad-bit/glb-t-r/6100b7a688723ad1b3a67403b99e8dbaf82fc040/three-head.glb', (gltf) => { 
+gltfLoader.load('https://raw.githubusercontent.com/csontarpad-bit/ OmniCorp: Rebirth Protocol/6100b7a688723ad1b3a67403b99e8dbaf82fc040/three-head.glb', (gltf) => { 
     bossModel = gltf.scene; bossAnimations = gltf.animations; 
     bossModel.traverse((c) => { if(c.isMesh) c.frustumCulled = false; }); 
 });
 
-gltfLoader.load('https://raw.githubusercontent.com/csontarpad-bit/glb-t-r/7e6d7e06a66a6c9df5665f7df2a92cdfb14846d7/tankv2.glb', (gltf) => { 
+gltfLoader.load('https://raw.githubusercontent.com/csontarpad-bit/ OmniCorp: Rebirth Protocol/7e6d7e06a66a6c9df5665f7df2a92cdfb14846d7/tankv2.glb', (gltf) => { 
     tankModel = gltf.scene; tankAnimations = gltf.animations; 
     tankModel.traverse((c) => { if(c.isMesh) c.frustumCulled = false; }); 
 });
 
-gltfLoader.load('https://raw.githubusercontent.com/csontarpad-bit/glb-t-r/3530b5fab56eb32e0fe925babfef2db89bd2b1ac/crying_head_2.glb', (gltf) => { 
+gltfLoader.load('https://raw.githubusercontent.com/csontarpad-bit/ OmniCorp: Rebirth Protocol/3530b5fab56eb32e0fe925babfef2db89bd2b1ac/crying_head_2.glb', (gltf) => { 
     crawlerModel = gltf.scene; 
     crawlerAnimations = gltf.animations; 
     crawlerModel.traverse((c) => { if(c.isMesh) c.frustumCulled = false; }); 
 });
 
-gltfLoader.load('https://raw.githubusercontent.com/csontarpad-bit/glb-t-r/8c7271b0135d22428617169177fe45e31e6aecf7/ultrakill_alternate_revolver.glb', (gltf) => { 
+gltfLoader.load('https://raw.githubusercontent.com/csontarpad-bit/ OmniCorp: Rebirth Protocol/8c7271b0135d22428617169177fe45e31e6aecf7/ultrakill_alternate_revolver.glb', (gltf) => { 
     const gunMesh = gltf.scene; 
     gunMesh.scale.set(3, 3, 3); 
     gunMesh.position.set(0.8, -1.2, -1.5); 
@@ -305,26 +305,26 @@ gltfLoader.load('https://raw.githubusercontent.com/csontarpad-bit/glb-t-r/8c7271
     } 
 });
 
-gltfLoader.load('https://raw.githubusercontent.com/csontarpad-bit/glb-t-r/main/zombie.glb', (gltf) => { 
+gltfLoader.load('https://raw.githubusercontent.com/csontarpad-bit/ OmniCorp: Rebirth Protocol/main/zombie.glb', (gltf) => { 
     zombieModel = gltf.scene; 
     zombieAnimations = gltf.animations; 
     zombieModel.traverse((c) => { if(c.isMesh) c.frustumCulled = false; }); 
 });
 
-gltfLoader.load('https://raw.githubusercontent.com/csontarpad-bit/glb-t-r/0214d22fe4ca2284df78cbf1eb8f820834651f9a/runerv2.glb', (gltf) => { 
+gltfLoader.load('https://raw.githubusercontent.com/csontarpad-bit/ OmniCorp: Rebirth Protocol/0214d22fe4ca2284df78cbf1eb8f820834651f9a/runerv2.glb', (gltf) => { 
     fastZombieModel = gltf.scene; 
     fastZombieAnimations = gltf.animations; 
     fastZombieModel.traverse((c) => { if(c.isMesh) c.frustumCulled = false; }); 
 });
 
-gltfLoader.load('https://raw.githubusercontent.com/csontarpad-bit/glb-t-r/6aa130a4c148ae5e16855905c4a15b9978e974ee/hider%20zombie.glb', (gltf) => { 
+gltfLoader.load('https://raw.githubusercontent.com/csontarpad-bit/ OmniCorp: Rebirth Protocol/6aa130a4c148ae5e16855905c4a15b9978e974ee/hider%20zombie.glb', (gltf) => { 
     hiderZombieModel = gltf.scene; 
     hiderZombieAnimations = gltf.animations; 
     hiderZombieModel.traverse((c) => { if(c.isMesh) c.frustumCulled = false; }); 
 });
 
-gltfLoader.load('https://raw.githubusercontent.com/csontarpad-bit/glb-t-r/db069dbbe97f2d9cd71985c37eb64dad31848434/ammo.glb', (gltf) => { ammoModel = gltf.scene; });
-gltfLoader.load('https://raw.githubusercontent.com/csontarpad-bit/glb-t-r/db069dbbe97f2d9cd71985c37eb64dad31848434/health.glb', (gltf) => { healthModel = gltf.scene; });
+gltfLoader.load('https://raw.githubusercontent.com/csontarpad-bit/ OmniCorp: Rebirth Protocol/db069dbbe97f2d9cd71985c37eb64dad31848434/ammo.glb', (gltf) => { ammoModel = gltf.scene; });
+gltfLoader.load('https://raw.githubusercontent.com/csontarpad-bit/ OmniCorp: Rebirth Protocol/db069dbbe97f2d9cd71985c37eb64dad31848434/health.glb', (gltf) => { healthModel = gltf.scene; });
 
 function createToxicPuddle(x, z) {
     const baseRadius = 0.7 + Math.random() * 0.4;
