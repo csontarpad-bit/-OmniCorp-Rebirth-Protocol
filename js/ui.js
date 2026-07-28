@@ -89,6 +89,8 @@ if (closeArchiveBtn) {
             mainMenu.classList.remove('hidden');
         } else if (archiveOpenedFrom === 'shopMenu' && shopMenu) {
             shopMenu.classList.remove('hidden');
+        } else if (archiveOpenedFrom === 'pauseMenu') { // ÚJ!
+            document.getElementById('pause-menu').classList.remove('hidden');
         }
     });
 }
@@ -411,10 +413,10 @@ window.updateShopButtons = function() {
 
     // 1. FEGYVEREK 
     const weaponsData = [
-        { id: 'pistol', name: 'OMNICORP PISZTOLY', basePrice: 200, image: "" },
-        { id: 'shotgun', name: 'SÖRÉTES PUSKA', basePrice: 500, image: "" },
-        { id: 'rifle', name: 'GÉPKARABÉLY', basePrice: 1000, image: "" },
-        { id: 'super', name: 'NEHÉZ REVOLVER', basePrice: 5000, image: "" }
+        { id: 'pistol', name: 'OMNICORP PISZTOLY', basePrice: 200, image: weapons.pistol.image },
+        { id: 'shotgun', name: 'SÖRÉTES PUSKA', basePrice: 500, image: weapons.shotgun.image },
+        { id: 'rifle', name: 'GÉPKARABÉLY', basePrice: 1000, image: weapons.rifle.image },
+        { id: 'super', name: 'NEHÉZ REVOLVER', basePrice: 5000, image: weapons.super.image }
     ];
 
     weaponsData.forEach(wData => {
@@ -444,41 +446,74 @@ window.updateShopButtons = function() {
 
     // 2. KÉPESSÉGEK (Augmentációk)
     const skillsData = [
-        { id: 'maxHealth', name: 'KEVLÁR IMPLANT', desc: '+20% Max HP', image: "" },
+        { id: 'maxHealth', name: 'SZÖVET SŰRŰSÍTŐ', desc: '+20% Max HP', image: "" },
         { id: 'speed', name: 'CYBER LÁB', desc: '+20% Sebesség', image: "" },
         { id: 'ammoLoot', name: 'LŐSZER ZSEB', desc: '+20% Max Tartalék', image: "" },
         { id: 'healthLoot', name: 'NANOBOTOK', desc: '+20% Gyógyulás', image: "" },
         { id: 'revive', name: 'ÚJRAÉLESZTŐ', desc: '+1 Extra Élet', image: "" },
-        { id: 'freeze', name: 'KRIO-GRÁNÁT', desc: '+2 mp Fagyasztás', image: "" }
+        { id: 'freeze', name: 'CRYO-OVERRIDE', desc: '+2 mp Rendszeridő', image: "" }
     ];
 
-    skillsData.forEach(sData => {
+skillsData.forEach(sData => {
         let btn = document.getElementById(`skill-${sData.id}`);
         if (!btn) return;
         let s = skills[sData.id];
         
         if (s.level < s.maxLevel) { 
             let upgPrice = s.baseCost * (s.level + 1);
-            let levelText = sData.id === 'revive' ? `RAKTÁRON: <span style="color:#fff;">${s.level} DB</span>` : `FEJLETTSÉG: LVL <span style="color:#fff;">${s.level}</span> / ${s.maxLevel}`;
-            btn.innerHTML = getBtnHTML(sData.name, sData.image, `${levelText}<br><span style="color:#00ffff; font-size: 12px;">HATÁS: ${sData.desc}</span>`, `KALIBRÁCIÓ: ${upgPrice} CR`); 
+            
+            // --- EGYEDI SZÖVEGEZÉS KÉPESSÉGENKÉNT ---
+            let levelText = `FEJLETTSÉG: LVL <span style="color:#fff;">${s.level}</span> / ${s.maxLevel}`;
+            let btnActionText = `KALIBRÁCIÓ: ${upgPrice} CR`; // Alapértelmezett gomb szöveg
+            
+            if (sData.id === 'revive') {
+                levelText = `RAKTÁRON: <span style="color:#fff;">${s.level} DB</span>`;
+                btnActionText = `SZINTÉZIS: ${upgPrice} CR`;
+            } else if (sData.id === 'freeze') {
+                // A te új, lore-barát szöveged a hűtőrendszerhez!
+                levelText = `LICENC SZINT: <span style="color:#fff;">${s.level}</span> / ${s.maxLevel}`;
+                btnActionText = `HOZZÁFÉRÉS VÉTELE: ${upgPrice} CR`;
+            }
+            
+            btn.innerHTML = getBtnHTML(sData.name, sData.image, `${levelText}<br><span style="color:#00ffff; font-size: 12px;">HATÁS: ${sData.desc}</span>`, btnActionText); 
             btn.disabled = score < upgPrice;
         } else { 
-            btn.innerHTML = getBtnHTML(sData.name, sData.image, "ÁLLAPOT: MAX SZINT", "---"); 
+            let maxText = sData.id === 'freeze' ? "JOGOSULTSÁG: MAX (KORLÁTLAN)" : "ÁLLAPOT: MAX SZINT";
+            btn.innerHTML = getBtnHTML(sData.name, sData.image, maxText, "---"); 
             btn.disabled = true; 
         }
         btn.onclick = () => upgradeSkill(sData.id);
     });
 
-    // 3. GYORSMŰVELETEK: Lőszer Utánpótlás
+  // 3. GYORSMŰVELETEK: Lőszer Utánpótlás
     const ammoBtn = document.getElementById('buy-ammo');
     if (ammoBtn) {
         ammoBtn.classList.add('btn-action'); 
-        // IDE ÜRES STRING ("") MEGY MÁSODIKKÉNT, MERT NINCS KÉP!
-        ammoBtn.innerHTML = getBtnHTML("LŐSZER UTÁNPÓTLÁS", "", "+25% Tartalék minden fegyverbe", "KÖLTSÉG: 50 CR");
-        ammoBtn.disabled = score < 50;
+        
+        // --- JAVÍTÁS: Ellenőrizzük, hogy van-e egyáltalán hely a zsebünkben! ---
+        let needsAmmo = false;
+        for (let key in weapons) {
+            if (weapons[key].owned && weapons[key].reserve < weapons[key].maxReserve) {
+                needsAmmo = true; break;
+            }
+        }
+
+        if (!needsAmmo) {
+            // Ha tele van minden, letiltjuk a gombot!
+            ammoBtn.innerHTML = getBtnHTML("LŐSZER UTÁNPÓTLÁS", "", "A tartalék kapacitás maximális.", "KÖLTSÉG: 0 CR");
+            ammoBtn.disabled = true;
+        } else {
+            // Ha kell lőszer, mehet a vásárlás!
+            ammoBtn.innerHTML = getBtnHTML("LŐSZER UTÁNPÓTLÁS", "", "+25% Tartalék minden fegyverbe", "KÖLTSÉG: 50 CR");
+            ammoBtn.disabled = (score < 50);
+        }
+
         ammoBtn.onclick = () => {
-            if (score >= 50) { score -= 50; if (typeof giveGlobalAmmo === 'function') giveGlobalAmmo(); updateShopButtons(); } 
-            else flashMoneyError();
+            if (needsAmmo && score >= 50) { 
+                score -= 50; 
+                if (typeof giveGlobalAmmo === 'function') giveGlobalAmmo(); 
+                updateShopButtons(); 
+            } else flashMoneyError();
         };
     }
 
@@ -530,6 +565,39 @@ window.updateShopButtons = function() {
                 if (typeof playSound === 'function') playSound('heal');
                 const healFlash = document.getElementById('heal-flash');
                 if (healFlash) { healFlash.style.opacity = 1; setTimeout(() => healFlash.style.opacity = 0, 300); }
+                updateShopButtons(); 
+            } else flashMoneyError();
+        };
+    }
+
+
+
+    // --- KEVLÁR PÁNCÉL VÁSÁRLÁSA ---
+    const armorBtn = document.getElementById('buy-armor');
+    if (armorBtn) {
+        armorBtn.classList.add('btn-action'); 
+        let armorCost = 40; // Legyen 40 Credit 25 páncélért (így a 100 páncél 160 Creditbe fog kerülni)
+        let maxArmor = 100; // Maximum 100 páncélod lehet
+        let missingArmor = maxArmor - playerArmor;
+        
+        if (missingArmor <= 0) {
+            armorBtn.innerHTML = getBtnHTML("KEVLÁR PÁNCÉL", "", "A páncélzat sértetlen.", "KÖLTSÉG: 0 CR");
+            armorBtn.disabled = true;
+        } else {
+            // Ad 25 páncélt, vagy amennyi még hiányzik a 100-hoz
+            let armorGain = Math.min(25, missingArmor);
+            
+            // JAVÍTÁS: Kényszerített sortörés (<br>) a szöveg közepén, hogy sose csússzon szét a kártya!
+            armorBtn.innerHTML = getBtnHTML("KEVLÁR PÁNCÉL", "", `Pajzs generálása (+${Math.floor(armorGain)} AP).<br>Készlet: ${Math.floor(playerArmor)} / ${maxArmor}`, `KÖLTSÉG: ${armorCost} CR`);
+            
+            armorBtn.disabled = (score < armorCost);
+        }
+        
+        armorBtn.onclick = () => {
+            if (playerArmor < maxArmor && score >= armorCost) {
+                score -= armorCost; 
+                playerArmor = Math.min(maxArmor, playerArmor + 25); // Hozzáad 25 páncélt
+                if (typeof playSound === 'function') playSound('ammo'); // Kattógó hang
                 updateShopButtons(); 
             } else flashMoneyError();
         };
@@ -604,31 +672,70 @@ window.updateUI = function() {
     
     if(armorFill) armorFill.style.width = Math.max(0, playerArmor) + '%';
   
-    // 2. BÓNUSZ IDŐZÍTŐ KIJELZÉSE (Fent Középen)
+// 2. BÓNUSZ IDŐZÍTŐ ÉS KREDIT PANEL KIJELZÉSE (Fent Középen)
+    const bonusPanel = document.getElementById('bonus-panel');
     const timerDisplay = document.getElementById('timer-display');
-    if (timerDisplay && isWaveActive) {
-        let waveDuration = clock.getElapsedTime() - waveStartTime;
-        let parTime = enemiesToSpawn * 4; 
-        let timeLeft = Math.max(0, parTime - waveDuration);
-        
-        let seconds = Math.floor(timeLeft);
-        let millis = Math.floor((timeLeft - seconds) * 10);
-        
-        timerDisplay.innerText = `00:${seconds < 10 ? '0'+seconds : seconds}.${millis}`;
-        
-        if (timeLeft > parTime * 0.5) timerDisplay.style.color = '#fff';
-        else if (timeLeft > 0) timerDisplay.style.color = '#ffaa00';
-        else { timerDisplay.innerText = `00:00.0`; timerDisplay.style.color = '#ff0000'; }
-    } else if (timerDisplay && !isWaveActive) {
-        timerDisplay.innerText = ``; 
+    const bonusDisplay = document.getElementById('bonus-display');
+
+    if (bonusPanel && timerDisplay && bonusDisplay) {
+        if (isWaveActive) {
+            bonusPanel.classList.remove('hidden'); // Megjelenítjük a szép kék keretes panelt
+            
+            // Idő számolása (Szünetek levonásával)
+            let waveDuration = (clock.getElapsedTime() - waveStartTime) - totalPausedTime;
+            let parTime = enemiesToSpawn * 4; 
+            let timeLeft = Math.max(0, parTime - waveDuration);
+            
+            let seconds = Math.floor(timeLeft);
+            let millis = Math.floor((timeLeft - seconds) * 10);
+            
+            // Jelenlegi (másodperc alapú) bónusz kredit kiszámolása!
+            let currentBonusCR = seconds * 10;
+            
+            // Szövegek frissítése
+            timerDisplay.innerText = `00:${seconds < 10 ? '0'+seconds : seconds}.${millis}`;
+            bonusDisplay.innerText = `+${currentBonusCR} CR`;
+            
+            // Színezés az idő fogyása alapján
+            if (timeLeft > parTime * 0.5) {
+                // Még bőven van idő (Fehér idő, Sárga pénz)
+                timerDisplay.style.color = '#fff';
+                timerDisplay.style.textShadow = '0 0 10px rgba(255, 255, 255, 0.8)';
+                bonusDisplay.style.color = '#ffcc00';
+                bonusDisplay.style.textShadow = '0 0 10px rgba(255, 204, 0, 0.8)';
+            }
+            else if (timeLeft > 0) {
+                // Kezd kifutni az időből (Sárga idő, Narancs pénz)
+                timerDisplay.style.color = '#ffaa00';
+                timerDisplay.style.textShadow = '0 0 10px rgba(255, 170, 0, 0.8)';
+                bonusDisplay.style.color = '#ff8800';
+                bonusDisplay.style.textShadow = '0 0 10px rgba(255, 136, 0, 0.8)';
+            }
+            else { 
+                // Lejárt az idő (0 CR)
+                timerDisplay.innerText = `00:00.0`; 
+                timerDisplay.style.color = '#ff0000'; 
+                timerDisplay.style.textShadow = '0 0 10px rgba(255, 0, 0, 0.8)';
+                bonusDisplay.innerText = `+0 CR`;
+                bonusDisplay.style.color = '#555'; // Szürke, elvesztett pénz
+                bonusDisplay.style.textShadow = 'none';
+            }
+
+        } else {
+            // Ha a harcnak vége (pl. a liftben vagy a menüben vagyunk), elrejtjük a keretet
+            bonusPanel.classList.add('hidden');
+        }
     }
 
     // 3. FEGYVER HUD FRISSÍTÉSE (Jobb alsó sarok)
     let w = weapons[currentWeaponId];
     
-    // Ide majd képet tehetsz a név helyett!
+  
     const weaponIcon = document.getElementById('weapon-icon-display');
-    if(weaponIcon) weaponIcon.innerText = (w.name).toUpperCase();
+    if(weaponIcon) {
+        // Szöveg helyett most már a fegyver gyönyörű, átlátszó képe jelenik meg, kap egy kis ciánkék árnyékot (glow) is!
+        weaponIcon.innerHTML = `<img src="${w.image}" style="width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 0 5px rgba(0,255,255,0.8));">`;
+    }
     
     const ammoClip = document.getElementById('ammo-clip');
     const ammoReserve = document.getElementById('ammo-reserve');
@@ -819,6 +926,7 @@ if (closeDirBtn) {
         directivesMenu.style.display = 'none';
         if (dirOpenedFrom === 'mainMenu') mainMenu.classList.remove('hidden');
         else if (dirOpenedFrom === 'shopMenu') shopMenu.classList.remove('hidden');
+        else if (dirOpenedFrom === 'pauseMenu') document.getElementById('pause-menu').classList.remove('hidden'); // ÚJ!
     });
 }
 
@@ -1040,3 +1148,189 @@ document.querySelectorAll('.diff-btn').forEach(btn => {
         }
     });
 });
+
+// ==========================================
+// OPCIÓK / IRÁNYÍTÁS MENÜ LOGIKA (AAA VERZIÓ)
+// ==========================================
+document.addEventListener("DOMContentLoaded", () => {
+    const optionsMenu = document.getElementById('options-menu');
+    const openOptionsBtn = document.getElementById('open-options-btn');
+    const closeOptionsBtn = document.getElementById('close-options-btn');
+    const mainMenu = document.getElementById('main-menu');
+
+    // FÜLEK (TABS) KEZELÉSE
+    const tabBtns = document.querySelectorAll('.opt-tab-btn');
+    const sections = document.querySelectorAll('.opt-section');
+
+    tabBtns.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            // Leveszünk minden aktív stílust
+            tabBtns.forEach(b => {
+                b.classList.remove('active');
+                b.style.background = 'transparent';
+                b.style.color = '#00aaaa';
+            });
+            sections.forEach(s => s.classList.add('hidden'));
+
+            // Aktuális gomb beállítása (OmniCorp stílus)
+            e.target.classList.add('active');
+            e.target.style.background = '#005555';
+            e.target.style.color = '#00ffff';
+
+            // Megfelelő tartalom megjelenítése
+            const targetId = e.target.getAttribute('data-target');
+            document.getElementById(targetId).classList.remove('hidden');
+        });
+    });
+
+    // Kezdeti gomb stílus (Audio/Video)
+    let firstBtn = document.querySelector('.opt-tab-btn[data-target="opt-av"]');
+    if(firstBtn) {
+        firstBtn.style.background = '#005555';
+        firstBtn.style.color = '#00ffff';
+    }
+
+    // ABLAK NYITÁSA/ZÁRÁSA
+    if (openOptionsBtn && optionsMenu) {
+        openOptionsBtn.addEventListener('click', () => {
+            if (mainMenu) mainMenu.classList.add('hidden');
+            optionsMenu.classList.remove('hidden');
+            optionsMenu.style.display = 'flex';
+        });
+    }
+
+    if (closeOptionsBtn && optionsMenu) {
+        closeOptionsBtn.addEventListener('click', () => {
+            optionsMenu.classList.add('hidden');
+            optionsMenu.style.display = 'none';
+            // ÚJ LOGIKA A VISSZATÉRÉSHEZ:
+            if (window.openedFromPause) {
+                document.getElementById('pause-menu').classList.remove('hidden');
+                window.openedFromPause = false;
+            } else if (mainMenu) {
+                mainMenu.classList.remove('hidden');
+            }
+        });
+    }
+
+    // --- CSÚSZKÁK (SLIDERS) KEZELÉSE ---
+    
+    // 1. Hangerő (Three.js globális hangerő)
+    const volSlider = document.getElementById('volume-slider');
+    const volVal = document.getElementById('vol-val');
+    if (volSlider) {
+        volSlider.addEventListener('input', (e) => {
+            globalVolume = parseFloat(e.target.value);
+            volVal.innerText = Math.round(globalVolume * 100) + '%';
+            if (typeof listener !== 'undefined' && listener) {
+                listener.setMasterVolume(globalVolume);
+            }
+        });
+    }
+
+    // 2. Fényerő (Képernyő filter)
+    const brightSlider = document.getElementById('brightness-slider');
+    const brightVal = document.getElementById('bright-val');
+    if (brightSlider) {
+        brightSlider.addEventListener('input', (e) => {
+            globalBrightness = parseFloat(e.target.value);
+            brightVal.innerText = Math.round(globalBrightness * 100) + '%';
+            // Ráhúzzuk a fényerőt az egész dokumentumra
+            document.body.style.filter = `brightness(${globalBrightness})`;
+        });
+    }
+
+    // 3. Egér Érzékenység (A game.js fogja felhasználni)
+    const sensSlider = document.getElementById('sensitivity-slider');
+    const sensVal = document.getElementById('sens-val');
+    if (sensSlider) {
+        sensSlider.addEventListener('input', (e) => {
+            mouseSensitivity = parseFloat(e.target.value);
+            if (mouseSensitivity < 0.002) sensVal.innerText = "Alacsony";
+            else if (mouseSensitivity > 0.006) sensVal.innerText = "Magas";
+            else sensVal.innerText = "Normál";
+        });
+    }
+});
+
+// ==========================================
+// SZÜNET (PAUSE) MENÜ LOGIKA ÉS GOMBOK
+// ==========================================
+const pauseMenu = document.getElementById('pause-menu');
+
+// 1. VISSZA A HARCBA
+const resumeBtn = document.getElementById('resume-btn');
+if(resumeBtn) {
+    resumeBtn.addEventListener('click', () => {
+        if(typeof resumeGame === 'function') resumeGame();
+    });
+}
+
+// 2. KILÉPÉS A FŐMENÜBE
+const quitBtn = document.getElementById('quit-to-main-btn');
+if(quitBtn) {
+    quitBtn.addEventListener('click', () => {
+        pauseMenu.classList.add('hidden');
+        document.getElementById('game-ui-wrapper').classList.add('hidden');
+        document.getElementById('main-menu').classList.remove('hidden');
+        gameState = 'MENU';
+        // Zenék cseréje
+        if (typeof sounds !== 'undefined' && sounds['music'] && sounds['music'].isPlaying) sounds['music'].stop();
+        if (typeof sounds !== 'undefined' && sounds['menuMusic'] && sounds['menuMusic'].buffer && !sounds['menuMusic'].isPlaying) sounds['menuMusic'].play();
+    });
+}
+
+// 3. BEÁLLÍTÁSOK MEGNYITÁSA PAUSE ALATT
+const pauseOptBtn = document.getElementById('pause-options-btn');
+if(pauseOptBtn) {
+    pauseOptBtn.addEventListener('click', () => {
+        pauseMenu.classList.add('hidden'); // Eltüntetjük a pause menüt
+        const optMenu = document.getElementById('options-menu');
+        if (optMenu) {
+            optMenu.classList.remove('hidden');
+            optMenu.style.display = 'flex';
+        }
+        // Beállítjuk, hogy a Vissza gomb a Beállításokban tudja, hova kell visszatérni!
+        window.openedFromPause = true; 
+    });
+}
+
+// 4. DIREKTÍVÁK MEGNYITÁSA PAUSE ALATT
+const pauseDirBtn = document.getElementById('pause-dir-btn');
+if(pauseDirBtn) {
+    pauseDirBtn.addEventListener('click', () => {
+        dirOpenedFrom = 'pauseMenu'; 
+        pauseMenu.classList.add('hidden');
+        const dirMenu = document.getElementById('directives-menu');
+        if (dirMenu) {
+            dirMenu.classList.remove('hidden');
+            dirMenu.style.display = 'flex';
+        }
+        // JAVÍTÁS: Átváltunk az Áttekintés fülre és kirajzoljuk!
+        document.querySelectorAll('.dir-tab-btn').forEach(b => b.classList.remove('active'));
+        let infoBtn = document.querySelector('.dir-tab-btn[data-tier="info"]');
+        if (infoBtn) infoBtn.classList.add('active');
+        currentDirTier = 'info';
+        if (typeof renderDirectivesTab === 'function') renderDirectivesTab('info');
+    });
+}
+
+// 5. KÓDEX MEGNYITÁSA PAUSE ALATT
+const pauseCodexBtn = document.getElementById('pause-codex-btn');
+if(pauseCodexBtn) {
+    pauseCodexBtn.addEventListener('click', () => {
+        archiveOpenedFrom = 'pauseMenu'; 
+        pauseMenu.classList.add('hidden');
+        const archMenu = document.getElementById('archive-menu');
+        if (archMenu) {
+            archMenu.classList.remove('hidden');
+            archMenu.style.display = 'flex';
+        }
+        // JAVÍTÁS: Átváltunk az Áttekintés fülre és kirajzoljuk!
+        document.querySelectorAll('.archive-tab-btn').forEach(b => b.classList.remove('active'));
+        let loreBtn = document.querySelector('.archive-tab-btn[data-category="lore"]');
+        if (loreBtn) loreBtn.classList.add('active');
+        currentArchiveCategory = 'lore';
+        if (typeof renderArchiveList === 'function') renderArchiveList();
+    });
+}
