@@ -73,20 +73,19 @@ function getSafeSpawnPosition(radius, minDist = 0) {
 // 3. ELLENSÉGEK LÉTREHOZÁSA (SPAWN)
 // ==========================================
 function spawnEnemy(x, z, isBoss = false, forceType = null) { 
-    if (!zombieModel || !fastZombieModel || !hiderZombieModel) return;
+    if (!zombieModel || !fastZombieModel || !hiderZombieModel) return; // Biztonsági fék, ha még nem töltött be a pálya
     
     // --- Típus sorsolása ---
-  let type = 'normal';
+    let type = 'normal';
     
     if (forceType) {
-        type = forceType; // Ha a játék kér egy Crawlert, megkapja!
+        type = forceType; 
     } else {
         let rand = Math.random();
         if (isBoss) type = 'boss';
         else if (rand < 0.15) type = 'runner';
         else if (rand < 0.25) type = 'tank';
         else if (rand < 0.35) type = 'hider';
-        // A CRAWLER KIKERÜLT A SORSOLÁSBÓL!
     }
 
     let baseModel = zombieModel;
@@ -100,7 +99,47 @@ function spawnEnemy(x, z, isBoss = false, forceType = null) {
 
     if (!baseModel) { baseModel = zombieModel; anims = zombieAnimations; }
 
-    const mesh = THREE.SkeletonUtils.clone(baseModel);
+    // ==========================================
+    // --- ÚJ: OBJECT POOLING LOGIKA (ÚJRAHASZNOSÍTÁS) ---
+    // ==========================================
+    let mesh = null;
+    let mixer = null;
+    let isFromPool = false;
+    
+    // ÚJ VÁLTOZÓK A VISSZAOLVASÁSHOZ
+    let savedBodyOffsetY = 0;
+    let savedHeadOffsetY = 0;
+
+    let poolIndex = zombiePool.findIndex(z => z.type === type);
+    
+    if (poolIndex > -1) {
+        let pooledZombie = zombiePool.splice(poolIndex, 1)[0];
+        mesh = pooledZombie.mesh;
+        mixer = pooledZombie.mixer;
+        savedBodyOffsetY = pooledZombie.bodyOffsetY; // ÚJ: Visszatöltjük a mentett adatot
+        savedHeadOffsetY = pooledZombie.headOffsetY; // ÚJ: Visszatöltjük a mentett adatot
+        isFromPool = true;
+        
+        mesh.visible = true;
+        mesh.rotation.x = 0; 
+        mesh.position.y = 0; 
+        mixer.stopAllAction(); 
+        
+        mesh.traverse((child) => {
+            if (child.isMesh) child.frustumCulled = false;
+        });
+    } else {
+        // NINCS A POOLBAN! Létrehozunk egy újat.
+        // Biztonsági fék: ha valamiért a baseModel nem létezik, megszakítjuk a folyamatot, hogy ne omoljon össze a játék!
+        if (!baseModel) return; 
+        
+        mesh = THREE.SkeletonUtils.clone(baseModel);
+        mixer = new THREE.AnimationMixer(mesh);
+    }
+    
+    // Végső Biztonsági Fék: Ha még mindig üres a mesh, leállunk!
+    if (!mesh) return; 
+    // ==========================================
 
     // --- Statisztikák és Méret (Alapértékek) ---
     let scale = 1.5, hpMult = 1, speedMult = 1, opacity = 1, reward = 20;
@@ -126,35 +165,40 @@ function spawnEnemy(x, z, isBoss = false, forceType = null) {
     mesh.position.set(x, 0, z);
     
     // --- Textúrák és Átlátszóság beállítása ---
-    mesh.traverse((child) => {
-        if (child.isMesh) {
-            child.frustumCulled = false;
-            
-            if (opacity < 1.0 || type === 'runner') {
-                if (Array.isArray(child.material)) child.material = child.material.map(m => m.clone());
-                else child.material = child.material.clone();
-            }
+    // FONTOS: Csak akkor állítjuk be az anyagokat, ha ÚJ a zombi! (Különben megtelik a memória anyag-klónokkal)
+    if (!isFromPool) {
+        mesh.traverse((child) => {
+            if (child.isMesh) {
+                child.frustumCulled = false;
+                
+                if (opacity < 1.0 || type === 'runner') {
+                    if (Array.isArray(child.material)) child.material = child.material.map(m => m.clone());
+                    else child.material = child.material.clone();
+                }
 
-            if (opacity < 1.0) {
-                let mats = Array.isArray(child.material) ? child.material : [child.material];
-                mats.forEach(m => { m.transparent = true; m.opacity = opacity; });
-            }
+                if (opacity < 1.0) {
+                    let mats = Array.isArray(child.material) ? child.material : [child.material];
+                    mats.forEach(m => { m.transparent = true; m.opacity = opacity; });
+                }
 
-            if (type === 'runner') {
-                let mats = Array.isArray(child.material) ? child.material : [child.material];
-                mats.forEach(m => {
-                    if (m.color) m.color.setHex(0x222222);
-                    if (m.emissive !== undefined) {
-                        m.emissive.setHex(0x005500); 
-                        if (typeof puddleTex !== 'undefined') m.emissiveMap = puddleTex;
-                        m.emissiveIntensity = 0.3; 
-                    }
-                    if (m.roughness !== undefined) m.roughness = 0.8;
-                    if (m.metalness !== undefined) m.metalness = 0.1;
-                });
+                if (type === 'runner') {
+                    let mats = Array.isArray(child.material) ? child.material : [child.material];
+                    mats.forEach(m => {
+                        if (m.color) m.color.setHex(0x222222);
+                        if (m.emissive !== undefined) {
+                            m.emissive.setHex(0x005500); 
+                            if (typeof puddleTex !== 'undefined') m.emissiveMap = puddleTex;
+                            m.emissiveIntensity = 0.3; 
+                        }
+                        if (m.roughness !== undefined) m.roughness = 0.8;
+                        if (m.metalness !== undefined) m.metalness = 0.1;
+                    });
+                }
             }
-        }
-    });
+        });
+    }
+
+  
 
     // --- ÚJ: CSONTOK MEGKERESÉSE A HITBOX SZINKRONIZÁLÁSHOZ ---
     let foundHeadBone = null;
@@ -236,86 +280,144 @@ function spawnEnemy(x, z, isBoss = false, forceType = null) {
     headHitbox.userData = { type: 'head' };
     headHitbox.frustumCulled = false;
 
-    // Hitboxok hozzáadása a VILÁGHOZ (Nem a modellhez!)
+   // Hitboxok hozzáadása a VILÁGHOZ
     scene.add(bodyHitbox); 
     scene.add(headHitbox); 
-    scene.add(mesh);
+    
+    // FONTOS: Magát a zombit (mesh) csak akkor kell a pályához adni, ha ÚJ!
+    if (!isFromPool) {
+        scene.add(mesh);
+    }
     
     enemyHitboxes.push(bodyHitbox, headHitbox); 
     
-    const mixer = new THREE.AnimationMixer(mesh);
-    let runAction = null; let attackAction = null;
+
+   // A 'mixer' már létezik feljebb, így itt már nem kell újra létrehozni!
+    let runAction = null; let attackAction = null; let deathAction = null; 
+    let hasDeathAnim = false; // <--- EZ HIÁNYZOTT!
 
     if (anims && anims.length > 0) {
         if (type === 'runner') {
             runAction = mixer.clipAction(anims.length > 9 ? anims[9] : anims[0]); 
             attackAction = mixer.clipAction(anims.length > 2 ? anims[2] : anims[0]);
-        } else if (type === 'crawler') {
-            runAction = mixer.clipAction(anims.length > 1 ? anims[1] : anims[0]); 
-        } else if (type === 'boss') {
-            runAction = mixer.clipAction(anims.length > 1 ? anims[1] : anims[0]); 
-            attackAction = mixer.clipAction(anims.length > 0 ? anims[0] : anims[0]);
-        } else if (type === 'tank') {
+            if (anims.length > 3) { deathAction = mixer.clipAction(anims[3]); hasDeathAnim = true; } // ÚJRA BERAKVA: hasDeathAnim = true
+        } 
+        else if (type === 'tank') {
             runAction = mixer.clipAction(anims.length > 21 ? anims[21] : anims[0]); 
             attackAction = mixer.clipAction(anims.length > 0 ? anims[0] : anims[0]);
-        } else {
-            let walkClip = anims.find(a => a.name.toLowerCase().includes('walk')) || anims[0];
-            if (type === 'hider') walkClip = anims.find(a => a.name.toLowerCase().includes('fight') || a.name.toLowerCase().includes('idle')) || anims[0];
-            runAction = mixer.clipAction(walkClip); 
+            if (anims.length > 11) { deathAction = mixer.clipAction(anims[11]); hasDeathAnim = true; } 
         }
+        else if (type === 'boss') {
+            runAction = mixer.clipAction(anims.length > 1 ? anims[1] : anims[0]); 
+            attackAction = mixer.clipAction(anims.length > 0 ? anims[0] : anims[0]);
+            if (anims.length > 2) { deathAction = mixer.clipAction(anims[2]); hasDeathAnim = true; }
+        }
+        else if (type === 'crawler') {
+            runAction = mixer.clipAction(anims.length > 1 ? anims[1] : anims[0]); 
+            if (anims.length > 2) { deathAction = mixer.clipAction(anims[2]); hasDeathAnim = true; }
+        }
+        else if (type === 'hider') {
+            let walkClip = anims.find(a => a.name.toLowerCase().includes('fight') || a.name.toLowerCase().includes('idle')) || anims[0];
+            runAction = mixer.clipAction(walkClip); 
+            let dClip = anims.find(a => a.name.toLowerCase().includes('death') || a.name.toLowerCase().includes('die'));
+            if (dClip) { deathAction = mixer.clipAction(dClip); hasDeathAnim = true; }
+        }
+        else {
+            let walkClip = anims.find(a => a.name.toLowerCase().includes('walk')) || anims[0];
+            runAction = mixer.clipAction(walkClip); 
+            let dClip = anims.find(a => a.name.toLowerCase().includes('death') || a.name.toLowerCase().includes('die'));
+            if (dClip) { deathAction = mixer.clipAction(dClip); hasDeathAnim = true; }
+        }
+
+        // --- 2. HALÁL ANIMÁCIÓ BEÁLLÍTÁSA (HA LÉTEZIK) ---
+        if (hasDeathAnim && deathAction) {
+            deathAction.setLoop(THREE.LoopOnce); 
+            deathAction.clampWhenFinished = true; 
+        }
+
         if(runAction) runAction.setLoop(THREE.LoopRepeat); 
         if(attackAction) attackAction.setLoop(THREE.LoopRepeat);
     }
 
-    if (runAction) runAction.play();
+// --- ANIMÁCIÓK BIZTONSÁGOS INDÍTÁSA / VISSZAÁLLÍTÁSA ---
+    if (runAction) {
+        // Ha a zombi a Pool-ból jött (újraéledt), biztosítanunk kell, 
+        // hogy a Halál animációja ne álljon a végén (clampWhenFinished), és újra fusson!
+        if (isFromPool) {
+            mixer.stopAllAction(); // Leállítunk mindent (Támadás, Halál)
+            runAction.reset().fadeIn(0.1).play(); // Tiszta lappal, finoman indítjuk a futást
+            
+            // ÚJRA BEÁLLÍTJUK, HOGY A ZOMBI FUSSON (Különben a game.js azt hinné, hogy még halott/támad)
+            let enIdx = enemies.findIndex(e => e.mesh === mesh);
+            if (enIdx > -1) {
+                enemies[enIdx].currentAction = runAction;
+            }
+        } else {
+            // Ha teljesen új zombi, simán csak elindítjuk
+            runAction.play();
+        }
+    }
     
     const radarContainer = document.getElementById('radar');
     const blip = document.createElement('div'); 
     blip.className = 'radar-blip'; 
     if (radarContainer) radarContainer.appendChild(blip);
     
- mesh.updateMatrixWorld(true);
+    mesh.updateMatrixWorld(true);
 
     let bodyOffsetY = by; 
-    if (foundSpineBone) {
-        let tempPos = new THREE.Vector3();
-        foundSpineBone.getWorldPosition(tempPos);
-        // Kiszámoljuk a különbséget a te beállításod és a csont valós helye között
-        bodyOffsetY = by - tempPos.y; 
-    }
-
     let headOffsetY = hy;
-    if (foundHeadBone) {
-        let tempPos = new THREE.Vector3();
-        foundHeadBone.getWorldPosition(tempPos);
-        headOffsetY = hy - tempPos.y;
+
+    // FONTOS: Ha a zombi a Pool-ból jött, NEM számoljuk újra a csontokat (mert torz pózban vannak).
+    // Helyette felhasználjuk a halálakor elmentett, tökéletes értékeket!
+    if (isFromPool) {
+        bodyOffsetY = savedBodyOffsetY;
+        headOffsetY = savedHeadOffsetY;
+    } else {
+        // Csak teljesen új zombinál számoljuk ki a csontok alapján!
+        if (foundSpineBone) {
+            let tempPos = new THREE.Vector3();
+            foundSpineBone.getWorldPosition(tempPos);
+            bodyOffsetY = by - tempPos.y; 
+        }
+        if (foundHeadBone) {
+            let tempPos = new THREE.Vector3();
+            foundHeadBone.getWorldPosition(tempPos);
+            headOffsetY = hy - tempPos.y;
+        }
     }
 
     // --- ÚJ: HULLÁM ALAPÚ NEHEZEDÉS ---
     const baseStats = difficultySettings[currentDifficulty];
     
    // Agresszív Nehezedés: +4% minden egyes hullámnál!
-    // Így a 25. hullámra duplázódnak a statisztikák, az 50. hullámra triplázódnak.
     let waveMultiplier = 1.0 + ((currentWave - 1) * 0.04);
 
-    enemies.push({ 
+    // ITT KERÜL BELE A ZOMBI A TÖMBBE! Ezelőtt a sor előtt sehol nem szerepelhet 'en.'
+enemies.push({ 
         type: type,
-        mesh, bodyHitbox, headHitbox, 
+        mesh: mesh, 
+        bodyHitbox: bodyHitbox, 
+        headHitbox: headHitbox, 
         headBone: foundHeadBone,   
         spineBone: foundSpineBone, 
         bx: bx, bz: bz, hx: hx, hz: hz, 
-        // EZ A KÉT SOR HIÁNYZOTT AZ ELŐBB!!! 
         bodyOffsetY: bodyOffsetY, 
         headOffsetY: headOffsetY, 
         
-        // --- A WaveMultiplier alkalmazása a statisztikákra! ---
         health: (baseStats.health * hpMult) * waveMultiplier, 
         speed: (baseStats.speed * speedMult) * waveMultiplier,
         damageMult: (type === 'boss' ? 3 : type === 'tank' ? 2 : 1) * waveMultiplier,
         
         reward: reward, 
-        mixer, blip,
-        runAction, attackAction, currentAction: runAction,
+        mixer: mixer, 
+        blip: blip,
+        runAction: runAction, 
+        attackAction: attackAction, 
+        deathAction: deathAction, 
+        hasDeathAnim: hasDeathAnim, 
+        frozen: false, // <--- ÚJ: BIZTOSÍTJUK, HOGY NE LEGYEN LEFAGYVA ÚJRAÉLEDÉSKOR!
+        currentAction: runAction,
         lifeTime: (type === 'crawler') ? 12.0 : Infinity 
     });
 }
