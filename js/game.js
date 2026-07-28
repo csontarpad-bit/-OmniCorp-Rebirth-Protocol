@@ -20,67 +20,6 @@ scene.add(new THREE.AmbientLight(0x55ff55, 0.3));
 playerLight = new THREE.PointLight(0xaaffaa, 0.8, 20);
 scene.add(playerLight);
 
-// ==========================================
-// 2D TOXIKUS GŐZ (CAMERA LENS EFFEKT) SETUP
-// ==========================================
-const mistCanvas = document.getElementById('cameraLens');
-const mistCtx = mistCanvas ? mistCanvas.getContext('2d') : null;
-if (mistCanvas) {
-    mistCanvas.width = window.innerWidth;
-    mistCanvas.height = window.innerHeight;
-}
-
-const mistParticles = [];
-
-// Gőz textúra generálása memóriában
-const smokeTexture = document.createElement('canvas');
-smokeTexture.width = 256; smokeTexture.height = 256;
-const sCtx = smokeTexture.getContext('2d');
-let sGrad = sCtx.createRadialGradient(128, 128, 10, 128, 128, 128);
-sGrad.addColorStop(0, 'rgba(40, 255, 90, 0.22)');   
-sGrad.addColorStop(0.4, 'rgba(20, 180, 60, 0.10)'); 
-sGrad.addColorStop(0.8, 'rgba(5, 80, 20, 0.03)');   
-sGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');          
-sCtx.fillStyle = sGrad;
-sCtx.fillRect(0, 0, 256, 256);
-
-class CameraMistParticle {
-    constructor(puddleCount) {
-        this.x = Math.random() * mistCanvas.width;
-        if (puddleCount < 100) this.y = mistCanvas.height + Math.random() * 100;
-        else this.y = Math.random() * mistCanvas.height;
-        
-        this.vx = (Math.random() - 0.5) * 1.6;
-        this.vy = (Math.random() - 0.5) * 0.8 - 0.3; 
-        this.size = Math.random() * 300 + 400; 
-        this.maxSize = this.size * 1.5;
-        this.growth = Math.random() * 0.4 + 0.2;
-        this.alpha = 0;
-        this.maxAlpha = Math.random() * 0.6 + 0.4; 
-        this.life = 1.0;
-        this.decay = Math.random() * 0.0008 + 0.0005; 
-        this.rotation = Math.random() * Math.PI * 2;
-        this.rotSpeed = (Math.random() - 0.5) * 0.005;
-    }
-    update() {
-        this.x += this.vx; this.y += this.vy;
-        if (this.size < this.maxSize) this.size += this.growth;
-        this.rotation += this.rotSpeed; this.life -= this.decay;
-        
-        if (this.life > 0.8) this.alpha = ((1.0 - this.life) / 0.2) * this.maxAlpha;
-        else this.alpha = (this.life / 0.8) * this.maxAlpha;
-    }
-    draw(ctx) {
-        if (this.alpha <= 0) return;
-        ctx.save();
-        ctx.globalAlpha = this.alpha;
-        ctx.translate(this.x, this.y);
-        ctx.rotate(this.rotation);
-        ctx.globalCompositeOperation = 'screen';
-        ctx.drawImage(smokeTexture, -this.size / 2, -this.size / 2, this.size, this.size);
-        ctx.restore();
-    }
-}
 
 const flashlight = new THREE.SpotLight(0xaaffaa, 20, 50, Math.PI / 6, 0.5);
 camera.add(flashlight);
@@ -92,6 +31,28 @@ muzzleFlash = new THREE.PointLight(0xffaa00, 0, 100);
 muzzleFlash.position.set(0.8, -0.6, -3.0);
 camera.add(muzzleFlash);
 scene.add(camera);
+
+// ==========================================
+// ESZKÖZ-FELISMERÉS ÉS HUD BEÁLLÍTÁS
+// ==========================================
+const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+// Ha PC-n vagyunk, azonnal elrejtjük a mobil-specifikus gombokat a HUD-ról!
+document.addEventListener("DOMContentLoaded", () => {
+    if (!isMobile) {
+        const switchBtn = document.getElementById('switch-weapon-btn');
+        const shootBtn = document.getElementById('shoot-btn');
+        const joyZoneL = document.getElementById('zone-left');
+        const joyZoneR = document.getElementById('zone-right');
+        const joyBase = document.getElementById('joy-base');
+        
+        if(switchBtn) switchBtn.classList.add('hidden');
+        if(shootBtn) shootBtn.classList.add('hidden');
+        if(joyZoneL) joyZoneL.style.pointerEvents = 'none'; // Kikapcsoljuk az érintést bal oldalon
+        if(joyZoneR) joyZoneR.style.pointerEvents = 'none'; // Kikapcsoljuk az érintést jobb oldalon
+        if(joyBase) joyBase.classList.add('hidden');
+    }
+});
 
 // ==========================================
 // OBJECT POOL INICIALIZÁLÁS (Betöltéskor)
@@ -152,6 +113,55 @@ radSystem.renderOrder = 999;
     
     scene.add(radSystem);
 
+// ==========================================
+// --- ÚJ: 3D TOXIKUS FÜST (VOLUMETRIC FOG) ---
+// ==========================================
+const fogParticleCount = 150; // Mennyi füstpamacs legyen a levegőben
+const fogGeo = new THREE.BufferGeometry();
+const fogVerts = [];
+// Eltároljuk a részecskék forgási irányát és sebességét (később az animáláshoz kell)
+const fogData = []; 
+
+for (let i = 0; i < fogParticleCount; i++) {
+    // Egy nagy, 40x40 méteres területen szórjuk szét őket a kamera magasságában (Y: 0-4 méter között)
+    let x = (Math.random() - 0.5) * 40;
+    let y = Math.random() * 4;
+    let z = (Math.random() - 0.5) * 40;
+    fogVerts.push(x, y, z);
+    
+    fogData.push({
+        vx: (Math.random() - 0.5) * 0.05,
+        vy: (Math.random() - 0.5) * 0.02,
+        vz: (Math.random() - 0.5) * 0.05,
+    });
+}
+fogGeo.setAttribute('position', new THREE.Float32BufferAttribute(fogVerts, 3));
+
+// Csinálunk egy nagyon lágy, elmosódott füst textúrát a memóriában (nem izzó pont, hanem felhő)
+const fogCanvas = document.createElement('canvas');
+fogCanvas.width = 128; fogCanvas.height = 128;
+const fCtx = fogCanvas.getContext('2d');
+const fGrad = fCtx.createRadialGradient(64, 64, 10, 64, 64, 60);
+fGrad.addColorStop(0, 'rgba(40, 255, 90, 0.4)');   // Zöldes közép
+fGrad.addColorStop(0.5, 'rgba(20, 180, 60, 0.1)'); // Halványabb szélek
+fGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');         // Átlátszó perem
+fCtx.fillStyle = fGrad;
+fCtx.fillRect(0, 0, 128, 128);
+const fogTexture = new THREE.CanvasTexture(fogCanvas);
+
+const fogMat = new THREE.PointsMaterial({
+    size: 15.0, // ÓRIÁSI méretű felhők, amik egybeolvadnak!
+    map: fogTexture,
+    transparent: true,
+    opacity: 0.0, // Alapból láthatatlan (A pocsolyák száma fogja növelni a sűrűséget!)
+    depthWrite: false, // Nagyon fontos: hogy a füst mögötti tárgyak (fegyver, zombik) ne tűnjenek el hibásan!
+    blending: THREE.AdditiveBlending // Szép, világítós mocsári gőz
+});
+
+const fogSystem = new THREE.Points(fogGeo, fogMat);
+// Kiemeljük a falak fölé, hogy a falba lógó részek ne vágódjanak le olyan csúnyán
+fogSystem.renderOrder = 1; 
+scene.add(fogSystem);
 
 // ==========================================
 // 2. HANGRENDSZER
@@ -171,6 +181,8 @@ function loadSound(name, url, volume = 1.0, isLoop = false) {
         if (name === 'music' && listener.context.state === 'running') sound.play();
     });
 }
+loadSound('cryoGas', 'https://raw.githubusercontent.com/csontarpad-bit/glb-t-r/5abe88d4b8b1dd33f0887daa25511297b89eecbd/cryo%20gas.mp3', 0.8);
+loadSound('iceCrack', 'https://raw.githubusercontent.com/csontarpad-bit/glb-t-r/46c22b763dcc098c3c6581afdfbccad22203c429/ice%20brake.mp3', 0.5); // Halkabbra vesszük, ez csak háttérzaj
 loadSound('footstep', 'https://raw.githubusercontent.com/csontarpad-bit/glb-t-r/dd55e7027743a8ed1ec9aa2c9bd70895c3605773/foot%20%20step.mp3', 0.8);
 loadSound('deathScream', 'https://raw.githubusercontent.com/csontarpad-bit/glb-t-r/dd55e7027743a8ed1ec9aa2c9bd70895c3605773/Death%20scream.mp3', 1.0);
 loadSound('burst', 'https://raw.githubusercontent.com/csontarpad-bit/glb-t-r/df6d333b9936fa81cffbce5c2bdb8891eaf9ee37/burst.mp3', 1.0);
@@ -358,30 +370,37 @@ function createToxicPuddle(x, z) {
     if (typeof updateToxicFog === 'function') updateToxicFog();
 }
 
-// --- TOXIKUS KÖD SZÁMÍTÁSA ---
-
+/// --- TOXIKUS KÖD SZÁMÍTÁSA ---
 function updateToxicFog() {
     if (!scene.fog) return;
 
     let maxPuddles = 200; 
     let currentPuddles = Math.min(toxicPuddles.length, maxPuddles);
     
-    // 1. SŰRŰSÉG: Drasztikus növelés!
-    // 0.035 az alap. 200 pocsolyánál hozzáadunk 0.6-ot!
-    // A 0.635-ös sűrűségnél a 3D térben kb. 2 méterre fogsz csak ellátni. Teljes vakság.
+    // 1. A JÁTÉKMOTOR ALAP KÖDJE (Ami a távolságot takarja el)
     let fogDensity = 0.035 + (currentPuddles / maxPuddles) * 0.6;
     scene.fog.density = fogDensity;
 
+   // --- ÚJ: A MI 3D FÜSTÜNK SŰRŰSÉGÉNEK NÖVELÉSE! ---
+    if (typeof fogMat !== 'undefined') {
+        fogMat.opacity = (currentPuddles / maxPuddles) * 0.6;
+    }
+
+    // ==========================================
+    // JAVÍTÁS: HA AKTÍV A FAGYASZTÁS, NE SZÍNEZD VISSZA ZÖLDRE!
+    // ==========================================
+    if (typeof activeFreezeTimer !== 'undefined' && activeFreezeTimer > 0) {
+        return; // Kilépünk a függvényből, hagyjuk kék/fehér állapotban a ködöt!
+    }
+
     // 2. SZÍN: Sötét, klausztrofób mocsári zöld
     let baseG = 26;  
-    let maxG = 40;   
+    let maxG = 40;
     let currentG = baseG + (currentPuddles / maxPuddles) * (maxG - baseG);
     
     scene.fog.color.setRGB(5 / 255, currentG / 255, 5 / 255);
 
-    // 3. A LEGFONTOSABB SOR A SZILUETTEK ELLEN:
-    // A világ hátterének színét (égbolt) folyamatosan szinkronizáljuk a köd színével!
-    // Így a távoli tárgyak egybeolvadnak a semmivel, nem lesznek éles széleik.
+    // 3. A világ hátterének szinkronizálása
     scene.background.copy(scene.fog.color);
 }
 
@@ -688,25 +707,55 @@ scene.add(cylinder);
                             }
                         }
                         
-                        // BIZTONSÁGOS TÖRLÉS
+                     // ==========================================
+                        // --- ÚJ: HULLA (CORPSE) LÉTREHOZÁSA ÉS ÁTMOZGATÁSA ---
+                        // ==========================================
                         const radarContainer = document.getElementById('radar');
                         if (radarContainer && en.blip && en.blip.parentNode === radarContainer) {
                             radarContainer.removeChild(en.blip);
                         }
-                        scene.remove(en.mesh); 
+                        
+                        // 1. HITBOXOK ELTÁVOLÍTÁSA (Át lehessen menni a hullán)
                         scene.remove(en.bodyHitbox);
                         scene.remove(en.headHitbox);
                         
-                        // Hitboxok törlése a lőhető listából
                         let bIdx = enemyHitboxes.indexOf(en.bodyHitbox);
                         if (bIdx > -1) enemyHitboxes.splice(bIdx, 1);
                         let hIdx = enemyHitboxes.indexOf(en.headHitbox);
                         if (hIdx > -1) enemyHitboxes.splice(hIdx, 1);
+
+                        // 2. HALÁL ANIMÁCIÓ (VAGY FAGYASZTÁS) ERŐSZAKOS INDÍTÁSA
+                        let animDuration = 0;
+                        if (en.hasDeathAnim && en.deathAction) {
+                            // Szigorú átváltás: leállítunk minden korábbi animációt (sétát, támadást)!
+                            en.mixer.stopAllAction();
+                            
+                            // Azonnal elindítjuk a halált!
+                            en.deathAction.reset().play();
+                            animDuration = en.deathAction._clip ? en.deathAction._clip.duration : 1.5;
+                        } else {
+                            // Nincs animáció: Azonnal megfagy a helyén (bábu mód)
+                            en.mixer.stopAllAction();
+                        }
                         
-                        // Maga a zombi törlése a listából
+                        // 3. ÁTRAKÁS A HULLAZSÁKBA (Mentjük a hitbox eltolásokat a következő újraéledéshez!)
+                        deadBodies.push({
+                            mesh: en.mesh,
+                            mixer: en.mixer,
+                            hasDeathAnim: en.hasDeathAnim,
+                            bodyOffsetY: en.bodyOffsetY, 
+                            headOffsetY: en.headOffsetY, 
+                            freezeTimer: animDuration + 0.1, 
+                            frozen: false,     
+                            sinking: false,    
+                            type: en.type
+                        });
+                        
+                        // 4. MAGA A ZOMBI TÖRLÉSE AZ "ÉLŐK" LISTÁJÁBÓL
                         let enIdx = enemies.indexOf(en);
                         if (enIdx > -1) enemies.splice(enIdx, 1);
-                    } 
+                        // ==========================================
+                    }
                 }
             } 
         } 
@@ -785,6 +834,13 @@ window.addEventListener('keydown', (e) => {
     let key = e.key.toLowerCase(); 
     if (key in keys) keys[key] = true; 
     
+    // --- ÚJ: SZÜNET GOMB (P) ---
+    if (key === 'p' && gameState === 'PLAYING') {
+        // Ha P-t nyomunk, kilépünk az egérzárkából.
+        // Ez automatikusan meghívja a pointerlockchange eseményt, ami betölti a Szünet menüt!
+        document.exitPointerLock(); 
+    }
+    
     // --- MANUÁLIS ÚJRATÖLTÉS ("R" GOMB) ---
     if (key === 'r' && gameState === 'PLAYING' && !isReloading) {
         let wpn = weapons[currentWeaponId];
@@ -852,11 +908,12 @@ document.body.addEventListener('click', (e) => {
     }
 });
 
+
 // NÉZELŐDÉS
 window.addEventListener('mousemove', (e) => {
     if (document.pointerLockElement === document.body && gameState === 'PLAYING') {
-        yaw -= (e.movementX || 0) * 0.003;
-        pitch -= (e.movementY || 0) * 0.003;
+        yaw -= (e.movementX || 0) * mouseSensitivity; // <--- Dinamikus érzékenység!
+        pitch -= (e.movementY || 0) * mouseSensitivity; // <--- Dinamikus érzékenység!
         pitch = Math.max(-Math.PI/2, Math.min(Math.PI/2, pitch));
     }
 });
@@ -878,13 +935,48 @@ window.addEventListener('mouseup', (e) => {
 });
 window.addEventListener('contextmenu', (e) => e.preventDefault());
 
-// --- ÚJ BIZTONSÁGI VÉDELEM AZ AUTOMATA LÖVÉS BUG ELLEN ---
+// --- BIZTONSÁGI VÉDELEM ÉS ESC (PAUSE) GOMB ELFOGÁSA ---
 document.addEventListener('pointerlockchange', () => {
-    // Ha az egér szabaddá válik (pl. ESC megnyomása, vagy menü kinyílása), azonnal álljon le a lövés!
     if (document.pointerLockElement !== document.body) {
-        isShootingBtnPressed = false;
+        isShootingBtnPressed = false; // Lövés leáll
+        
+        // HA JÁTÉK KÖZBEN NYOMUNK ESC-T (Nem a boltban vagyunk!), AKKOR SZÜNET!
+        if (gameState === 'PLAYING') {
+            pauseGame();
+        }
     }
 });
+
+// A Játék Megállítása
+window.pauseGame = function() {
+    gameState = 'PAUSED'; 
+    pauseStartTime = clock.getElapsedTime(); // Feljegyezzük, mikor állítottuk meg!
+    document.getElementById('pause-menu').classList.remove('hidden');
+}
+
+// A Játék Folytatása
+window.resumeGame = function() {
+    document.getElementById('pause-menu').classList.add('hidden');
+    
+    // Hozzáadjuk a szünetben töltött időt a teljes "lopott" időhöz!
+    if (pauseStartTime > 0) {
+        totalPausedTime += (clock.getElapsedTime() - pauseStartTime);
+        pauseStartTime = 0;
+    }
+    
+    gameState = 'PLAYING';
+    try { document.body.requestPointerLock(); } catch(e){} 
+}
+
+// Mobil Szünet Gomb
+const mobilePauseBtn = document.getElementById('mobile-pause-btn');
+if(mobilePauseBtn) {
+    mobilePauseBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        document.exitPointerLock(); // Ez automatikusan meghívja a pauseGame() fenti eseményét!
+        if(gameState === 'PLAYING') pauseGame(); // Biztonsági hívás mobilra
+    });
+}
 window.addEventListener('blur', () => { isShootingBtnPressed = false; }); // Ha ablakot vált a játékos
 
 const shootBtn = document.getElementById('shoot-btn');
@@ -910,11 +1002,6 @@ window.addEventListener('resize', () => {
         camera.updateProjectionMatrix();
         renderer.setSize(window.innerWidth, window.innerHeight);
     }
-    // ÚJ: A gőz canvas átméretezése!
-    if (mistCanvas) {
-        mistCanvas.width = window.innerWidth;
-        mistCanvas.height = window.innerHeight;
-    }
 });
 
 // --- ÚJ: FAGYASZTÁS KÉPESSÉG AKTIVÁLÁSA ---
@@ -923,10 +1010,24 @@ function triggerFreeze() {
         activeFreezeTimer = skills.freeze.level * 2; // Szintenként 2 másodperc
         freezeCooldown = 30; // 30 mp újratöltés
         
-        playSound('heal'); // Egyelőre a gyógyulás hangját használjuk jéghangnak
+        // --- ÚJ: HANGOK LEJÁTSZÁSA ---
+        playSound('cryoGas'); 
+        playSound('iceCrack');
+
+        // --- ÚJ: VIZUÁLIS TEREM-EFFEKT (Látható gáz és jég) ---
         const iceOverlay = document.getElementById('ice-overlay');
         if(iceOverlay) iceOverlay.style.opacity = 1;
         
+        // A 3D Füst és a Világ ködének megfestése azonnal jégkékre/fehérre!
+        if (typeof fogMat !== 'undefined') {
+            fogMat.color.setHex(0xaaaaee); // Halvány jégkék füst
+            fogMat.opacity = 0.8; // Felcsapódik sűrűre a gőz!
+        }
+        if (scene.fog) {
+            scene.fog.color.setHex(0x001133); // Fagyos, sötétkék mélység
+            scene.background.copy(scene.fog.color);
+        }
+
         const fBtn = document.getElementById('freeze-btn');
         if(fBtn) { fBtn.disabled = true; fBtn.innerText = `⏳ ${Math.ceil(freezeCooldown)}s`; }
     }
@@ -993,7 +1094,15 @@ window.startWaveCountdown = function(isFirstWave = false) {
         cameraShake = 0.2;
     }, 100);
 
-    window.waveTimeout = setTimeout(() => {
+    window.waveTimeout = setTimeout(function checkGameState() {
+        // Ha éppen PAUSE menüben vagy BOLTBAN vagyunk, NE induljon el a hullám!
+        // Helyette elindítjuk újra a setTimeout-ot 1 másodperc múlva (Várakozunk).
+        if (gameState !== 'PLAYING') {
+            window.waveTimeout = setTimeout(checkGameState, 1000);
+            return;
+        }
+
+        // HA JÁTSZUNK, BIZTONSÁGOSAN ELINDÍTJUK A HULLÁMOT:
         clearInterval(window.glitchShakeInterval); 
         
         if (glitchOverlay) {
@@ -1045,9 +1154,9 @@ window.startWaveCountdown = function(isFirstWave = false) {
             }
         }
         
-        isWaveActive = true; 
+ isWaveActive = true; 
         waveStartTime = clock.getElapsedTime(); 
-
+        totalPausedTime = 0; 
     }, 7000);
 }
 
@@ -1107,13 +1216,39 @@ window.startGame = function() {
             radarContainer.removeChild(enemies[i].blip); 
         }
     }
-    // Tömbök nullázása
+// Tömbök nullázása
     enemies.length = 0; 
     enemyHitboxes.length = 0; 
     
-    toxicPuddles.forEach(p => { scene.remove(p); p.geometry.dispose(); }); 
+    // 1. HULLÁK ÉS A POOL TÖRLÉSE
+    deadBodies.forEach(db => { 
+        scene.remove(db.mesh); 
+        db.mesh.traverse(c => { if(c.isMesh && c.geometry) c.geometry.dispose(); }); 
+    });
+    deadBodies.length = 0;
+
+    zombiePool.forEach(pz => { 
+        scene.remove(pz.mesh); 
+        pz.mesh.traverse(c => { if(c.isMesh && c.geometry) c.geometry.dispose(); }); 
+    });
+    zombiePool.length = 0;
+
+    // 2. POCSOLYÁK TÖRLÉSE ÉS KÖD NULLÁZÁSA
+    toxicPuddles.forEach(p => { scene.remove(p); p.geometry.dispose(); });
     toxicPuddles.length = 0;
+    pendingMutations = []; // Ezt is kiürítjük, nehogy kikeljen egy szellem-növény!
+    if (typeof updateToxicFog === 'function') updateToxicFog(); // Visszaállítjuk a ködöt 0 pocsolyához (Teljesen tiszta levegő)
+
+    // 3. MUTÁNS NÖVÉNYEK TÖRLÉSE (Ezt felejtettük el korábban!)
+    activePlants.forEach(plant => {
+        scene.remove(plant.mesh);
+        scene.remove(plant.puddle);
+        scene.remove(plant.hitbox);
+        if(plant.puddle.geometry) plant.puddle.geometry.dispose();
+    });
+    activePlants.length = 0;
     
+    // 4. LOOT DOBOZOK TÖRLÉSE
     medkits.forEach(mk => { scene.remove(mk.mesh); }); 
     medkits.length = 0; 
     
@@ -1189,7 +1324,19 @@ function animate() {
             }
             
             if (playerDamage > 0) {
-                playerHealth -= playerDamage; 
+                // --- ÚJ: PÁNCÉL VÉD A SAVTÓL IS ---
+                if (playerArmor > 0) {
+                    if (playerArmor >= playerDamage) {
+                        playerArmor -= playerDamage;
+                        playerDamage = 0;
+                    } else {
+                        playerDamage -= playerArmor;
+                        playerArmor = 0;
+                    }
+                }
+                if (playerDamage > 0) playerHealth -= playerDamage; 
+                // ----------------------------------
+
                 if (typeof updateUI === 'function') updateUI();
                 playSound('hurt');
                 
@@ -1243,17 +1390,32 @@ function animate() {
         screenBlood.style.opacity = Math.max(0, parseFloat(screenBlood.style.opacity) - delta * 0.4);
     }
     
- // Részecskék organikus lebegése
-    const positions = radSystem.geometry.attributes.position.array;
-    const time = clock.getElapsedTime();
-    for (let i = 0; i < positions.length; i += 3) { 
-        positions[i + 1] += delta * 0.3; // Lassú emelkedés (Y tengely)
-        positions[i] += Math.sin(time * 1.5 + positions[i+1]) * delta * 0.5; // Hullámzás (X)
-        positions[i + 2] += Math.cos(time * 1.5 + positions[i+1]) * delta * 0.5; // Hullámzás (Z)
-        
-      if (positions[i + 1] > 10) positions[i + 1] = 0.2;
+ // --- ÚJ: A 3D FÜST KAVARGÁSA ---
+    if (typeof fogSystem !== 'undefined' && fogMat.opacity > 0) {
+        const fogPos = fogSystem.geometry.attributes.position.array;
+        for (let i = 0; i < fogParticleCount; i++) {
+            let idx = i * 3;
+            
+            // Mozgatás az előre elmentett véletlenszerű irányokba
+            fogPos[idx] += fogData[i].vx;     // X tengely
+            fogPos[idx + 1] += fogData[i].vy; // Y tengely
+            fogPos[idx + 2] += fogData[i].vz; // Z tengely
+            
+            // Ha a füstpamacs kimegy a 40 méteres dobozból, visszadobjuk a túloldalra!
+            // Így sosem fogy el körülötted a gőz, mindig visszakerül (Végtelenítő trükk)
+            let limit = 20.0;
+            if (fogPos[idx] > camera.position.x + limit) fogPos[idx] -= limit * 2;
+            if (fogPos[idx] < camera.position.x - limit) fogPos[idx] += limit * 2;
+            
+            if (fogPos[idx + 2] > camera.position.z + limit) fogPos[idx + 2] -= limit * 2;
+            if (fogPos[idx + 2] < camera.position.z - limit) fogPos[idx + 2] += limit * 2;
+            
+            // Felfelé és lefelé mozgás korlátozása
+            if (fogPos[idx + 1] > 5.0) fogPos[idx + 1] = 0;
+            if (fogPos[idx + 1] < 0) fogPos[idx + 1] = 5.0;
+        }
+        fogSystem.geometry.attributes.position.needsUpdate = true;
     }
-    radSystem.geometry.attributes.position.needsUpdate = true;
 
 // ==========================================
     // MUTÁLÓDÓ POCSOLYÁK ANIMÁCIÓJA (PULZÁLÁS & VÖRÖSÖDÉS)
@@ -1293,8 +1455,17 @@ function animate() {
     // A hullám véget ér, ha már csak a menekülő szörnyek élnek (vagy senki)
     if (isWaveActive && enemies.filter(e => e.type !== 'crawler').length === 0) {
         isWaveActive = false; 
-        let waveDuration = clock.getElapsedTime() - waveStartTime;
-        let parTime = enemiesToSpawn * 4; 
+
+        // ==========================================
+        // --- ÚJ: HULLÁK ELSÜLLYESZTÉSE A HULLÁM VÉGÉN ---
+        // ==========================================
+        for (let i = 0; i < deadBodies.length; i++) {
+            deadBodies[i].sinking = true; 
+        }
+
+        // JAVÍTÁS ITT IS: Levonjuk a szünetidőt a bónuszból!
+        let waveDuration = (clock.getElapsedTime() - waveStartTime) - totalPausedTime;
+        let parTime = enemiesToSpawn * 4;
         lastWaveBonus = 0;
         if (waveDuration < parTime) {
             let savedSeconds = Math.floor(parTime - waveDuration);
@@ -1434,16 +1605,33 @@ function animate() {
     camera.position.x += shakeX;
     camera.position.y = baseCamY + currentBob + shakeY;
 
-// --- FAGYASZTÁS COOLDOWN ÉS EFFEKT ---
+// --- FAGYASZTÁS COOLDOWN ÉS TEREM EFFEKTEK ---
     if (activeFreezeTimer > 0) {
+        let prevTimer = activeFreezeTimer; // Eltároljuk, hogy tudjuk, most járt-e le
         activeFreezeTimer -= delta;
-        if (activeFreezeTimer <= 0 && document.getElementById('ice-overlay')) document.getElementById('ice-overlay').style.opacity = 0;
+        
+        // EBBEN A PILLANATBAN JÁRT LE A FAGYASZTÁS!
+        if (activeFreezeTimer <= 0 && prevTimer > 0) {
+            
+            // 1. Képernyő jég levétele
+            const iceOverlay = document.getElementById('ice-overlay');
+            if(iceOverlay) iceOverlay.style.opacity = 0;
+            
+            // 2. Hangok kikapcsolása! (A Three.js Audio stop parancsa)
+            if (sounds['cryoGas'] && sounds['cryoGas'].isPlaying) sounds['cryoGas'].stop();
+            if (sounds['iceCrack'] && sounds['iceCrack'].isPlaying) sounds['iceCrack'].stop();
+            
+            // 3. Füst és Köd színek visszaállítása alaphelyzetbe
+            if (typeof fogMat !== 'undefined') fogMat.color.setHex(0xffffff); // Vissza az alap fehér/zöld színezésre
+            if (typeof updateToxicFog === 'function') updateToxicFog(); // A te saját függvényed helyreteszi a sűrűséget és a színt!
+        }
     }
+
     if (freezeCooldown > 0) {
         freezeCooldown -= delta;
         const fBtn = document.getElementById('freeze-btn');
         if (fBtn && activeFreezeTimer <= 0) {
-            fBtn.innerText = freezeCooldown > 0 ? `⏳ ${Math.ceil(freezeCooldown)}s` : `❄️ FAGYASZTÁS`;
+            fBtn.innerText = freezeCooldown > 0 ? `⏳ ${Math.ceil(freezeCooldown)}s` : `❄️ CRYO-PURGE`;
             if (freezeCooldown <= 0) fBtn.disabled = false;
         }
     }
@@ -1584,11 +1772,24 @@ function animate() {
 
             const stats = difficultySettings[currentDifficulty];
             let rawDamage = stats.damage * en.damageMult; 
+
+            // ==========================================
+            // --- ÚJ: PÁNCÉL FOGJA FEL A SEBZÉST ELŐSZÖR ---
             if (playerArmor > 0) {
-                let block = Math.min(playerArmor, rawDamage * 2); 
-                playerArmor -= block; rawDamage -= block / 2;
+                if (playerArmor >= rawDamage) {
+                    playerArmor -= rawDamage; // A páncél mindent felfogott
+                    rawDamage = 0; 
+                } else {
+                    rawDamage -= playerArmor; // Páncél eltört, kiszámoljuk a maradékot
+                    playerArmor = 0; 
+                }
             }
+            // A maradék sebzés (ha átütötte a páncélt, vagy már nem volt páncél) lemegy a HP-ból!
             if (rawDamage > 0) playerHealth -= rawDamage;
+            // ==========================================
+
+            // --- ÚJ: DIREKTÍVA CHECK (Sérülés) ---
+            checkDirective('take_damage', en.type);
 
             // --- ÚJ: DIREKTÍVA CHECK (Sérülés) ---
             checkDirective('take_damage', en.type);
@@ -1763,11 +1964,26 @@ function animate() {
         if (distToPlayer < 2.5) {
             playSound('burst');
             
-            // Növény eltüntetése
+          // Növény eltüntetése
             scene.remove(plant.mesh);
             scene.remove(plant.puddle);
             plant.puddle.geometry.dispose();
             activePlants.splice(i, 1);
+
+            // ==========================================
+            // --- AZONNALI SEBZÉS (PÁNCÉLLAL VÉDVE) ---
+            let explosionDamage = 20;
+            if (playerArmor > 0) {
+                if (playerArmor >= explosionDamage) {
+                    playerArmor -= explosionDamage;
+                    explosionDamage = 0;
+                } else {
+                    explosionDamage -= playerArmor;
+                    playerArmor = 0;
+                }
+            }
+            if (explosionDamage > 0) playerHealth -= explosionDamage;
+            // ==========================================
 
             // AZONNALI SEBZÉS (-20 HP)
             playerHealth -= 20;
@@ -1827,6 +2043,49 @@ function animate() {
         }
     }
 
+ // ==========================================
+    // --- ÚJ: HULLÁK (DEAD BODIES) KEZELÉSE ÉS FAGYASZTÁSA ---
+    // ==========================================
+    for (let i = deadBodies.length - 1; i >= 0; i--) {
+        let corpse = deadBodies[i];
+        
+        // 1. Amíg nem fagyott meg, lejátszuk az animációt (ha van)
+        if (!corpse.frozen) {
+            corpse.freezeTimer -= delta;
+            
+            // Ha még van ideje (mert van animációja), akkor számoljuk
+            if (corpse.freezeTimer > 0 && corpse.mixer) {
+                corpse.mixer.update(delta);
+            }
+            
+
+           // Ha letelt az idő, LEFAGYASZTJUK A CSONTVÁZAT
+            if (corpse.freezeTimer <= 0) {
+                corpse.frozen = true;
+                // Csak akkor kapcsoljuk be a láthatóság-kímélést, ha tényleg fekszik a földön!
+                // Az álló "bábuknál" kikapcsolva hagyjuk, hogy ne tűnjenek el, ha felnézel.
+                if (corpse.hasDeathAnim) {
+                    corpse.mesh.traverse((child) => {
+                        if (child.isMesh) child.frustumCulled = true;
+                    });
+                }
+            }
+        }
+
+        // 2. HA SÜLLYED A PADLÓBA (Hullám végén történik)
+        if (corpse.sinking) {
+            corpse.mesh.position.y -= delta * 0.8; // Szép lassan besüllyed
+            
+            // Ha teljesen eltűnt a föld alatt (-2 méter)
+            if (corpse.mesh.position.y < -2.0) {
+                corpse.mesh.visible = false;
+                zombiePool.push(corpse); // ÁTRAKJUK A POOL-ba újrahasznosításra!
+                deadBodies.splice(i, 1);
+            }
+        }
+    }
+    // ==========================================
+
    // --- VÉR FRISSÍTÉSE ---
     for (let i = 0; i < bloodPool.length; i++) { 
         let p = bloodPool[i];
@@ -1857,39 +2116,52 @@ function animate() {
         }
     }
 
+   // ==========================================
+    // --- RÉSZECSKÉK ÉS FÜST ANIMÁLÁSA (3D) ---
     // ==========================================
-    // 2D TOXIKUS GŐZ RENDERELÉSE
-    // ==========================================
-    if (mistCtx && gameState === 'PLAYING') {
-        mistCtx.clearRect(0, 0, mistCanvas.width, mistCanvas.height);
-        
-        // Összekötjük a valós pocsolyák számával!
-        let currentPuddles = toxicPuddles.length;
-        let targetCount = Math.floor((Math.min(currentPuddles, 200) / 200) * 250);
-
-        // Gőz generálás
-        if (mistParticles.length < targetCount) {
-            let spawnChance = currentPuddles > 100 ? 0.9 : 0.5;
-            if (Math.random() < spawnChance) {
-                mistParticles.push(new CameraMistParticle(currentPuddles));
-            }
+    
+    // 1. A Kicsi Radioaktív Por (radSystem) mozgatása
+    if (typeof radSystem !== 'undefined') {
+        const positions = radSystem.geometry.attributes.position.array;
+        const time = clock.getElapsedTime();
+        for (let i = 0; i < positions.length; i += 3) { 
+            positions[i + 1] += delta * 0.3; // Lassú emelkedés (Y tengely)
+            positions[i] += Math.sin(time * 1.5 + positions[i+1]) * delta * 0.5; // Hullámzás (X)
+            positions[i + 2] += Math.cos(time * 1.5 + positions[i+1]) * delta * 0.5; // Hullámzás (Z)
+            
+            // Ha túl magasra szállt, kezdje újra lentről
+            if (positions[i + 1] > 10) positions[i + 1] = 0.2;
         }
-        
-        // Tisztítás (Ha boltban vettél takarítást, eltűnik a gőz!)
-        if (mistParticles.length > targetCount + 10) {
-            mistParticles[mistParticles.length - 1].decay = 0.02; 
-        }
-
-        // Részecskék mozgatása
-        for (let i = mistParticles.length - 1; i >= 0; i--) {
-            let p = mistParticles[i];
-            p.update();
-            p.draw(mistCtx);
-            if (p.life <= 0 || p.y < -p.size) {
-                mistParticles.splice(i, 1);
-            }
-        }
+        radSystem.geometry.attributes.position.needsUpdate = true;
     }
+
+    // 2. Az Óriási Kavargó Füst (fogSystem) mozgatása
+    if (typeof fogSystem !== 'undefined' && fogMat.opacity > 0) {
+        const fogPos = fogSystem.geometry.attributes.position.array;
+        for (let i = 0; i < fogParticleCount; i++) {
+            let idx = i * 3;
+            
+            // Mozgatás az előre elmentett véletlenszerű irányokba
+            fogPos[idx] += fogData[i].vx;     // X tengely
+            fogPos[idx + 1] += fogData[i].vy; // Y tengely
+            fogPos[idx + 2] += fogData[i].vz; // Z tengely
+            
+            // Ha a füstpamacs kimegy a 40 méteres dobozból, visszadobjuk a túloldalra!
+            // Így sosem fogy el körülötted a gőz, mindig visszakerül
+            let limit = 20.0;
+            if (fogPos[idx] > camera.position.x + limit) fogPos[idx] -= limit * 2;
+            if (fogPos[idx] < camera.position.x - limit) fogPos[idx] += limit * 2;
+            
+            if (fogPos[idx + 2] > camera.position.z + limit) fogPos[idx + 2] -= limit * 2;
+            if (fogPos[idx + 2] < camera.position.z - limit) fogPos[idx + 2] += limit * 2;
+            
+            // Felfelé és lefelé mozgás korlátozása (Hogy a föld felett kavarogjon)
+            if (fogPos[idx + 1] > 5.0) fogPos[idx + 1] = 0;
+            if (fogPos[idx + 1] < 0) fogPos[idx + 1] = 5.0;
+        }
+        fogSystem.geometry.attributes.position.needsUpdate = true;
+    }
+    // ==========================================
 
     // (Eredeti render sor)
     renderer.render(scene, camera);
