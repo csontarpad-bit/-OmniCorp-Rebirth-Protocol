@@ -955,7 +955,7 @@ function renderDirectivesTab(tier) {
         dirContent.innerHTML = `
             <div style="display: flex; gap: 20px;">
                 <div style="flex: 1;">
-                    <img src="https://raw.githubusercontent.com/csontarpad-bit/ OmniCorp: Rebirth Protocol/5fcee7cf3f3f0e88f7fee28af836805a55f9490a/OmniCorp.jpeg" style="width: 100%; border: 2px solid #00ffff; box-shadow: 0 0 15px rgba(0,255,255,0.3); border-radius: 5px;">
+                    <img src="https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/5fcee7cf3f3f0e88f7fee28af836805a55f9490a/OmniCorp.jpeg" style="width: 100%; border: 2px solid #00ffff; box-shadow: 0 0 15px rgba(0,255,255,0.3); border-radius: 5px;">
                 </div>
                 <div style="flex: 2; color:#e0ffff; font-size:16px; line-height:1.6; font-family: 'Share Tech Mono', monospace;">
                     <h3 style="color:#00ffff; margin-bottom: 10px;">TEREPI ADATGYŰJTÉSI PROTOKOLL</h3>
