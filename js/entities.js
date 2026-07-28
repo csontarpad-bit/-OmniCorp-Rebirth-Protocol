@@ -4,7 +4,7 @@
 const texLoader = new THREE.TextureLoader();
 
 // 1. A Textúra betöltése 
-const puddleTex = texLoader.load('https://raw.githubusercontent.com/csontarpad-bit/ OmniCorp: Rebirth Protocol/102a0d507c37ef59b9aeb075e1b30110c95f3b3f/puddle.jpg'); 
+const puddleTex = texLoader.load('https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/102a0d507c37ef59b9aeb075e1b30110c95f3b3f/puddle.jpg'); 
 puddleTex.wrapS = THREE.RepeatWrapping;
 puddleTex.wrapT = THREE.RepeatWrapping;
 
