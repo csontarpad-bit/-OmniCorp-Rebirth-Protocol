@@ -8,7 +8,7 @@ body { margin: 0; overflow: hidden; background: #000; touch-action: none; user-s
 #loading-screen {
     position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
     background-color: #000;
-    background-image: url('https://raw.githubusercontent.com/csontarpad-bit/glb-t-r/00ad21b70dad334c3614f776895e17d20e34f833/Loading.jpeg');
+    background-image: url('https://raw.githubusercontent.com/csontarpad-bit/ OmniCorp: Rebirth Protocol/00ad21b70dad334c3614f776895e17d20e34f833/Loading.jpeg');
     background-size: cover; background-position: center;
     display: flex; flex-direction: column; justify-content: flex-end; align-items: center;
     z-index: 9999; /* Legfelül van minden felett */
@@ -223,11 +223,20 @@ body { margin: 0; overflow: hidden; background: #000; touch-action: none; user-s
     background: rgba(0, 30, 30, 0.6);
     border: 1px solid #005555; 
     border-left: 5px solid #008888;
-    color: #fff; padding: 15px; font-family: 'Share Tech Mono', monospace;
-    text-align: left; cursor: pointer; transition: 0.2s;
-    display: flex; flex-direction: column; justify-content: center;
+    color: #fff; 
+    padding: 15px; 
+    font-family: 'Share Tech Mono', monospace;
+    text-align: left; 
+    cursor: pointer; 
+    transition: 0.2s;
+    display: flex; 
+    flex-direction: column; 
+    justify-content: center;
     position: relative;
     box-shadow: inset 0 0 10px rgba(0, 255, 255, 0.05);
+    
+    /* ÚJ: Fix minimum magasság, hogy soha ne "ugráljon" a kártya! */
+    min-height: 120px; 
 }
 
 .shop-btn:hover:not(:disabled) {
@@ -261,10 +270,13 @@ body { margin: 0; overflow: hidden; background: #000; touch-action: none; user-s
     .terminal-header { font-size: 28px; }
     .item-name { font-size: 18px; }
 }
-/* Páncél csík */
+/* Páncél csík (JAVÍTOTT VERZIÓ) */
 #armor-fill {
-    position: absolute; top: 0; left: 0; height: 100%; background-color: #00aaff;
-    transition: width 0.2s; box-shadow: 0 0 10px rgba(0, 170, 255, 0.5); opacity: 0.7;
+    height: 100%; 
+    background-color: #00aaff;
+    transition: width 0.2s; 
+    box-shadow: 0 0 10px rgba(0, 170, 255, 0.5); 
+    opacity: 0.9;
 }
 
 /* Fegyver infók */
@@ -494,3 +506,44 @@ body.drugged {
 .hud-btn:active { transform: scale(0.9); }
 #switch-weapon-btn:active { background: #00ffff; color: #000; }
 #shoot-btn:active { background: #ff0000; color: #fff; box-shadow: 0 0 30px #ff0000; }
+
+/* --- ÚJ: OMNICORP CSÚSZKA STÍLUS --- */
+.cyber-slider {
+    -webkit-appearance: none; appearance: none; width: 100%; height: 8px; background: rgba(0, 50, 50, 0.5); 
+    outline: none; border: 1px solid #005555; border-radius: 4px;
+}
+.cyber-slider::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none; width: 20px; height: 20px;
+    background: #00ffff; cursor: pointer; border-radius: 2px; box-shadow: 0 0 10px #00ffff;
+}
+
+/* --- ÚJ: OPCIÓK MENÜ FÜLEK (TABS) STÍLUSA --- */
+.opt-tab-btn {
+    background: transparent;
+    color: #00aaaa;
+    border: 1px solid #004444;
+    padding: 8px 20px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 16px;
+    cursor: pointer;
+    transition: 0.2s;
+    border-radius: 3px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+/* Amikor fölé viszed az egeret */
+.opt-tab-btn:hover {
+    background: rgba(0, 255, 255, 0.1);
+    color: #00ffff;
+    border-color: #00ffff;
+}
+
+/* Az éppen kiválasztott (aktív) fül kinézete */
+.opt-tab-btn.active {
+    background: #005555 !important;
+    color: #00ffff !important;
+    border-color: #00ffff !important;
+    box-shadow: 0 0 10px rgba(0,255,255,0.3);
+    font-weight: bold;
+}
