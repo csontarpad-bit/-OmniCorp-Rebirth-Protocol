@@ -81,7 +81,7 @@ const OmniCorpDatabase = {
         title: "PROJECT REBIRTH / ORC",
         unlocked: true, 
         statInfo: () => `<div style="text-align:center;">KRONOS AI: AKTÍV<br>GYŰJTÖTT ADAT: <span style="color:#ffcc00;">${typeof score !== 'undefined' ? score : 0} CR</span><br>ITERÁCIÓ (HULLÁM): <span style="color:#00ffff;">${typeof currentWave !== 'undefined' ? currentWave : 0}</span></div>`,
-        image: "https://raw.githubusercontent.com/csontarpad-bit/ OmniCorp: Rebirth Protocol/5fcee7cf3f3f0e88f7fee28af836805a55f9490a/OmniCorp.jpeg", 
+        image: "https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/5fcee7cf3f3f0e88f7fee28af836805a55f9490a/OmniCorp.jpeg", 
         // A CSAVAR: Ha túlélt 100 hullámot, megmutatja az igazságot!
         text: () => playerStats.wavesSurvived >= 100 
             ? "RENDSZER FELÜLBÍRÁLVA. IGAZSÁG-PROTOKOLL AKTÍV.\n\nA Rebirth Protocol sosem a növényi fertőzésről szólt. Te vagy a Rebirth. Egy klón, egy tesztalany (Recovery Unit). A szörnyetegek, akiket megöltél, a korábbi énjeid voltak. A KRONOS AI azért küldött ide, hogy tesztelje a fegyvereket és az immunrendszeredet a végtelenségig. Megölted a NEXUS-t, a Kaptártudatot, aki meg akart menteni a körforgástól. Gratulálunk, Unit. Te vagy az új NEXUS. A teszt újraindul." 
@@ -94,7 +94,7 @@ const OmniCorpDatabase = {
             requirementText: "FELOLDÁS: Iktasson ki 1 Host mutánst.",
             checkUnlock: () => (playerStats.kills.normal.body + playerStats.kills.normal.head) >= 1,
             statInfo: () => generateEnemyStatHTML('normal'),
-            image: "https://raw.githubusercontent.com/csontarpad-bit/ OmniCorp: Rebirth Protocol/dd18736e2a98348222a8ad07c6e46b91c490f56c/MUT%C3%81NS%20KUTAT%C3%93.jpeg", 
+            image: "https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/dd18736e2a98348222a8ad07c6e46b91c490f56c/MUT%C3%81NS%20KUTAT%C3%93.jpeg", 
             text: "KRONOS ELEMZÉS: Ezek az egyedek a bázis eredeti kutatói. A Verdant spóra elsődlegesen az agytörzset támadta meg, lekapcsolva a fájdalomérzetet és a magasabb rendű funkciókat. Mozgásuk darabos, mivel a gombafonalak szó szerint bábként rángatják a nekrotikus izomzatot.\n\nEgyénenként könnyen iktathatók, de a Kaptártudat miatt összehangoltan, rajokban támadnak. Halálukkor a sejtfalak felrepednek, és a bennük lévő toxikus biomassza a padlóra ömlik."
         },
         {
@@ -103,7 +103,7 @@ const OmniCorpDatabase = {
             requirementText: "FELOLDÁS: Iktasson ki 1 Leaper mutánst.",
             checkUnlock: () => (playerStats.kills.runner.body + playerStats.kills.runner.head) >= 1,
             statInfo: () => generateEnemyStatHTML('runner'),
-            image: "https://raw.githubusercontent.com/csontarpad-bit/ OmniCorp: Rebirth Protocol/c683b09b77b21e5f471c59622e65ddaeddd39541/runner.jpeg",
+            image: "https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/c683b09b77b21e5f471c59622e65ddaeddd39541/runner.jpeg",
             text: "KRONOS ELEMZÉS: Feltételezhetően a bázis volt fegyveres őrei. A mutáció váratlan kémiai reakcióba lépett a vérükben lévő katonai harci-stimulánsokkal. Ez folyamatos, extrém adrenalin-túltermelést és hiper-metabolizmust eredményezett.\n\nA felgyorsult anyagcsere szó szerint felemésztette a zsírszövetüket és az izomzatuk nagy részét, ezért megjelenésük vékony és aszott. Cserébe a megmaradt inak hihetetlen, már-már rovarszerű gyorsaságot és ugróerőt biztosítanak számukra. Célzásuk fokozott figyelmet igényel."
         },
         {
@@ -112,7 +112,7 @@ const OmniCorpDatabase = {
             requirementText: "FELOLDÁS: Iktasson ki 1 Juggernaut mutánst.",
             checkUnlock: () => (playerStats.kills.tank.body + playerStats.kills.tank.head) >= 1,
             statInfo: () => generateEnemyStatHTML('tank'),
-            image: "https://raw.githubusercontent.com/csontarpad-bit/ OmniCorp: Rebirth Protocol/c683b09b77b21e5f471c59622e65ddaeddd39541/tank.jpeg",
+            image: "https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/c683b09b77b21e5f471c59622e65ddaeddd39541/tank.jpeg",
             text: "KRONOS ELEMZÉS: Korábban beküldött, de elbukott külsős zsoldosok, akik asszimilálódtak. Érdekesség: a lényeken lévő szintetikus Kevlár páncélzat 99.8%-os egyezést mutat az Ön (Recovery Unit) jelenlegi felszerelésével. Az ok: standard vállalati beszállító.\n\nA spórák agresszívan fuzionáltak a páncélzattal. Az extra súly elviselésére a lény csontképződése (osteogenesis) kontrollálhatatlanná vált. Egy lassú, de szinte áthatolhatatlan bio-mechanikus daganat. Páncéltörő lőszerek használata erősen javasolt."
         },
         {
@@ -121,7 +121,7 @@ const OmniCorpDatabase = {
             requirementText: "FELOLDÁS: Iktasson ki 1 Phantom mutánst.",
             checkUnlock: () => (playerStats.kills.stalker.body + playerStats.kills.stalker.head) >= 1,
             statInfo: () => generateEnemyStatHTML('stalker'),
-            image: "https://raw.githubusercontent.com/csontarpad-bit/ OmniCorp: Rebirth Protocol/c683b09b77b21e5f471c59622e65ddaeddd39541/hider.jpeg",
+            image: "https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/c683b09b77b21e5f471c59622e65ddaeddd39541/hider.jpeg",
             text: "KRONOS ELEMZÉS: Egy evolúciós zsákutca, amely a vadászatra specializálódott. A mutáns bőrszövete egy kaméleonhoz hasonló, de annál sokkal fejlettebb kromatofóra-enzimet választ ki, amely képes megtörni a fényt a teste körül.\n\nGyakorlatilag láthatatlan a sötét környezetben. A Recovery Unit kizárólag a mozgás-érzékelő radarra, valamint a lény által keltett halk, nedves hangokra hagyatkozhat. Páncélzata nincs, fizikai felépítése rendkívül gyenge."
         },
         {
@@ -130,7 +130,7 @@ const OmniCorpDatabase = {
             requirementText: "FELOLDÁS: Iktasson ki 1 Golden Anomáliát.",
             checkUnlock: () => (playerStats.kills.crawler.body + playerStats.kills.crawler.head) >= 1,
             statInfo: () => generateEnemyStatHTML('crawler'),
-            image: "https://raw.githubusercontent.com/csontarpad-bit/ OmniCorp: Rebirth Protocol/c683b09b77b21e5f471c59622e65ddaeddd39541/crawler.jpeg",
+            image: "https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/c683b09b77b21e5f471c59622e65ddaeddd39541/crawler.jpeg",
             text: "KRONOS ELEMZÉS: Genetikailag tiszta Verdant entitás. Nem rendelkezik ragadozó ösztönökkel; funkciója pusztán a hálózat táplálása. Egy mozgó tápanyagtasak, amelyet az erősen rothadó (Sárga fázisú) biomassza szaga vonz elő.\n\nTeljesen ártalmatlan, de menekülési reflexe kiváló, kiszámíthatatlanul pattan vissza a falakról. Kiemelten magas koncentrációban tartalmaz sértetlen DNS-t, kilövése prémium Kredittel (CR) jár a Vállalat részéről."
         },
         {
@@ -139,7 +139,7 @@ const OmniCorpDatabase = {
             requirementText: "FELOLDÁS: Iktasson ki 1 Nexus-Node mutánst (5. Hullám).",
             checkUnlock: () => (playerStats.kills.boss.body + playerStats.kills.boss.head) >= 1,
             statInfo: () => generateEnemyStatHTML('boss'),
-            image: "https://raw.githubusercontent.com/csontarpad-bit/ OmniCorp: Rebirth Protocol/c683b09b77b21e5f471c59622e65ddaeddd39541/mini%20boss.jpeg",
+            image: "https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/c683b09b77b21e5f471c59622e65ddaeddd39541/mini%20boss.jpeg",
             text: "KRONOS ELEMZÉS: A Kaptártudat (Nexus) lokális védekező csomópontja. Ha a fertőzést veszély fenyegeti, a kisebb mutánsok egybeolvadnak egyetlen, masszív góliáttá. Rendelkezik egyfajta primitív intelligenciával és hangképző szervekkel, amelyekkel dermesztő, őrjöngő üvöltést hallat.\n\nExtrém magas életerő és pusztító fizikai erő. Támadásai képesek megzavarni a Recovery Unit vizuális interfészét (Rendszer-Glitch). A távolságtartás kötelező."
         },
         {
@@ -148,7 +148,7 @@ const OmniCorpDatabase = {
             requirementText: "FELOLDÁS: Érje el a 100. Hullámot.",
             checkUnlock: () => (typeof currentWave !== 'undefined' && currentWave >= 100) || playerStats.wavesSurvived >= 99, 
             statInfo: () => generateEnemyStatHTML('alpha'),
-            image: "https://raw.githubusercontent.com/csontarpad-bit/ OmniCorp: Rebirth Protocol/25d9afc7ab2489c689298e9c7aee89b8c8d45fee/alpha.jpeg",
+            image: "https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/25d9afc7ab2489c689298e9c7aee89b8c8d45fee/alpha.jpeg",
             text: () => playerStats.wavesSurvived >= 100 
             ? "RENDSZER FELÜLBÍRÁLVA. Ők voltunk mi. Az összes korábbi Recovery Unit egybeolvadt teste és elméje. Próbáltak figyelmeztetni minket. Próbáltak megmenteni a KRONOS tesztjétől. És te elpusztítottad őket. Most te veszed át a helyüket a tartályban." 
             : "KRONOS ELEMZÉS: A 'Verdant-projekt' Nulladik Betege. A fertőzés abszolút magja. Egy gigantikus biológiai amalgám, amely húsból, kábelekből és a volt személyzet maradványaiból áll össze. Katasztrofális veszélyfaktor. Képes kisebb mutánsokat generálni és irányítani a harctéren. Elpusztítása jelenti a küldetés végét és a szektor teljes sterilizálását."
@@ -161,7 +161,7 @@ const OmniCorpDatabase = {
             requirementText: "FELOLDÁS: Élje túl az 1. hullámot.",
             checkUnlock: () => (typeof currentWave !== 'undefined' && currentWave >= 1) || playerStats.wavesSurvived >= 1,
             statInfo: () => `<div style="text-align:center;">ANOMÁLIA ÁLLAPOTA: FELTÉRKÉPEZVE</div>`,
-            image: "https://raw.githubusercontent.com/csontarpad-bit/ OmniCorp: Rebirth Protocol/25d9afc7ab2489c689298e9c7aee89b8c8d45fee/Z%C3%B6ld%20pocsolya.jpeg",
+            image: "https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/25d9afc7ab2489c689298e9c7aee89b8c8d45fee/Z%C3%B6ld%20pocsolya.jpeg",
             text: "1-3. CIKLUS\n\nToxikus gázt bocsát ki, amely sűríti a ködöt, rontva a látási viszonyokat. A rajta álló mutánsoknak 20% sebzéscsökkentő pajzsot biztosít."
         },
         {
@@ -170,7 +170,7 @@ const OmniCorpDatabase = {
             requirementText: "FELOLDÁS: Élje túl a 4. hullámot.",
             checkUnlock: () => (typeof currentWave !== 'undefined' && currentWave >= 4) || playerStats.wavesSurvived >= 4,
             statInfo: () => `<div style="text-align:center;">ANOMÁLIA ÁLLAPOTA: FELTÉRKÉPEZVE</div>`,
-            image: "https://raw.githubusercontent.com/csontarpad-bit/ OmniCorp: Rebirth Protocol/25d9afc7ab2489c689298e9c7aee89b8c8d45fee/s%C3%A1rga%20pocsolya.jpeg",
+            image: "https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/25d9afc7ab2489c689298e9c7aee89b8c8d45fee/s%C3%A1rga%20pocsolya.jpeg",
             text: "4-5. CIKLUS\n\nErős rothadás. A rajta álló mutánsok 50%-os pajzsot kapnak. A gáz toxicitása megnő (dupla sebzés a Recovery Unitra). A rothadó szag vonzza a Golden Anomáliákat."
         },
         {
@@ -179,7 +179,7 @@ const OmniCorpDatabase = {
             requirementText: "FELOLDÁS: Élje túl a 6. hullámot.",
             checkUnlock: () => (typeof currentWave !== 'undefined' && currentWave >= 6) || playerStats.wavesSurvived >= 6,
             statInfo: () => `<div style="text-align:center;">ANOMÁLIA ÁLLAPOTA: FELTÉRKÉPEZVE</div>`,
-            image: "https://raw.githubusercontent.com/csontarpad-bit/ OmniCorp: Rebirth Protocol/25d9afc7ab2489c689298e9c7aee89b8c8d45fee/v%C3%B6r%C3%B6s%20pocsolya.jpeg",
+            image: "https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/25d9afc7ab2489c689298e9c7aee89b8c8d45fee/v%C3%B6r%C3%B6s%20pocsolya.jpeg",
             text: "6. CIKLUSTÓL\n\nKritikus tömeg. A pocsolyák 80%-os pajzsot adnak az ellenfeleknek. Ha kellő mennyiségű vörös biomassza fedi egymást, megindul a Hús-Virággá alakulás (Mutáció)."
         },
         {
@@ -188,7 +188,7 @@ const OmniCorpDatabase = {
             requirementText: "FELOLDÁS: Éljen túl egy Mutációt (7. Hullám) vagy pusztítson el egyet.",
             checkUnlock: () => (typeof currentWave !== 'undefined' && currentWave >= 7) || playerStats.plantsDestroyed >= 1,
             statInfo: () => `<div style="text-align:center;">MEGSEMMISÍTETT PÉLDÁNYOK: ${playerStats.plantsDestroyed} db</div>`,
-            image: "https://raw.githubusercontent.com/csontarpad-bit/ OmniCorp: Rebirth Protocol/25d9afc7ab2489c689298e9c7aee89b8c8d45fee/mutalodott%20noveny.jpeg",
+            image: "https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/25d9afc7ab2489c689298e9c7aee89b8c8d45fee/mutalodott%20noveny.jpeg",
             text: "A Vörös Fázisú biomasszák összefonódásából létrejött, pulzáló reprodukciós góc.\n\nKözelség esetén a góc kipukkan, és egy neuro-toxikus felhőt robbant a levegőbe. A toxin azonnali szövetkárosodást (20 HP), majd 5 másodpercig tartó heves hallucinációkat (Rendszer-Glitch) és szédülést okoz, mialatt a sejtleépülés folyamatos. Távolról történő fegyveres megsemmisítése, vagy a pocsolyák előzetes sterilizálása erősen javasolt."
         }
     ],
@@ -199,7 +199,7 @@ const OmniCorpDatabase = {
             requirementText: "FELOLDÁS: Alapértelmezett felszerelés.",
             checkUnlock: () => true,
             statInfo: () => `<div style="text-align:center;">AKTUÁLIS FEJLETTSÉG: ${typeof weapons !== 'undefined' ? weapons.pistol.level : 1} / 5. SZINT</div>`,
-            image: "https://raw.githubusercontent.com/csontarpad-bit/ OmniCorp: Rebirth Protocol/45abc3b3555b01cf93886d8560800ff7f3c5871c/pisztoly.png",
+            image: "https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/45abc3b3555b01cf93886d8560800ff7f3c5871c/pisztoly.png",
             text: "Az OmniCorp szabványos, könnyű kézifegyvere.\n\nA KRONOS AI az offline Terminálokba épített Ipari 3D Nyomtatók segítségével szintetizálja a fegyverzetet a Recovery Unit számára, az összegyűjtött harci adatokért (CR) cserébe.\n\nFEJLESZTÉSI FÁZISOK:\n- Szint 2: Tárkapacitás (Reserve) növelése 150%-ra.\n- Szint 3: Újratöltési idő (Reload) csökkentése 25%-kal.\n- Szint 4: Tárfogadók (Max Ammo) bővítése 150%-ra.\n- Szint 5: Páncéltörő lőszerek szintetizálása (Dupla Sebzés)."
         },
         {
@@ -208,7 +208,7 @@ const OmniCorpDatabase = {
             requirementText: "FELOLDÁS: Vásárolja meg a Terminálon.",
             checkUnlock: () => playerStats.weaponsBought.shotgun,
             statInfo: () => `<div style="text-align:center;">AKTUÁLIS FEJLETTSÉG: ${typeof weapons !== 'undefined' ? weapons.shotgun.level : 1} / 5. SZINT</div>`,
-            image: "https://raw.githubusercontent.com/csontarpad-bit/ OmniCorp: Rebirth Protocol/45abc3b3555b01cf93886d8560800ff7f3c5871c/sz%C3%B6r%C3%A9tes.png",
+            image: "https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/45abc3b3555b01cf93886d8560800ff7f3c5871c/sz%C3%B6r%C3%A9tes.png",
             text: "Közeli célpontok és tömegek ellen fejlesztett, masszív kinetikus erővel rendelkező fegyver.\n\nFEJLESZTÉSI FÁZISOK:\n- Szint 2: Tárkapacitás (Reserve) növelése 150%-ra.\n- Szint 3: Újratöltési idő (Reload) csökkentése 25%-kal.\n- Szint 4: Tárfogadók (Max Ammo) bővítése 150%-ra.\n- Szint 5: Páncéltörő lőszerek szintetizálása (Dupla Sebzés)."
         },
         {
@@ -217,7 +217,7 @@ const OmniCorpDatabase = {
             requirementText: "FELOLDÁS: Vásárolja meg a Terminálon.",
             checkUnlock: () => playerStats.weaponsBought.rifle,
             statInfo: () => `<div style="text-align:center;">AKTUÁLIS FEJLETTSÉG: ${typeof weapons !== 'undefined' ? weapons.rifle.level : 1} / 5. SZINT</div>`,
-            image: "https://raw.githubusercontent.com/csontarpad-bit/ OmniCorp: Rebirth Protocol/df39681a8668bd04e80660051e5755ff31995ba7/g%C3%A9gkarab%C3%A9ly.png",
+            image: "https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/df39681a8668bd04e80660051e5755ff31995ba7/g%C3%A9gkarab%C3%A9ly.png",
             text: "Nagy tűzgyorsaságú rohamkarabély, amely alkalmas a folyamatos terület-elnyomásra (Area Denial).\n\nFEJLESZTÉSI FÁZISOK:\n- Szint 2: Tárkapacitás (Reserve) növelése 150%-ra.\n- Szint 3: Újratöltési idő (Reload) csökkentése 25%-kal.\n- Szint 4: Tárfogadók (Max Ammo) bővítése 150%-ra.\n- Szint 5: Páncéltörő lőszerek szintetizálása (Dupla Sebzés)."
         },
         {
@@ -226,7 +226,7 @@ const OmniCorpDatabase = {
             requirementText: "FELOLDÁS: Vásárolja meg a Terminálon.",
             checkUnlock: () => playerStats.weaponsBought.super,
             statInfo: () => `<div style="text-align:center;">AKTUÁLIS FEJLETTSÉG: ${typeof weapons !== 'undefined' ? weapons.super.level : 1} / 5. SZINT</div>`,
-            image: "https://raw.githubusercontent.com/csontarpad-bit/ OmniCorp: Rebirth Protocol/df39681a8668bd04e80660051e5755ff31995ba7/revolver.png",
+            image: "https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/df39681a8668bd04e80660051e5755ff31995ba7/revolver.png",
             text: "A végső megállító erő. Egy masszív kaliberű revolver, amely kifejezetten a vastag páncélzattal és magas életerővel rendelkező mutánsok (pl. Juggernautok és Nexus-csomópontok) ellen készült. Egyedi, ipari 3D nyomtatott páncéltörő lőszerével képes átszakítani a legerősebb bio-mechanikus rétegeket is.\n\nFEJLESZTÉSI FÁZISOK:\n- Szint 2: Tárkapacitás (Reserve) növelése 150%-ra.\n- Szint 3: Újratöltési idő (Reload) csökkentése 25%-kal.\n- Szint 4: Tárfogadók (Max Ammo) bővítése 150%-ra.\n- Szint 5: Kettős kinetikus transzfer (Dupla Sebzés)."
         },
         {
@@ -280,7 +280,7 @@ const OmniCorpDatabase = {
             requirementText: "FELOLDÁS: Vásárolja meg a hozzáférést a Terminálon.",
             checkUnlock: () => playerStats.skillsBought >= 1,
             statInfo: () => `<div style="text-align:center;">BIZTONSÁGI SZINT:<br>${typeof skills !== 'undefined' ? skills.freeze.level : 0} / 5. SZINT</div>`,
-            image: "https://raw.githubusercontent.com/csontarpad-bit/ OmniCorp: Rebirth Protocol/9807e89295cfc8f0ba0b95ab93aaa0180b8b8d41/cryo.jpeg", 
+            image: "https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/9807e89295cfc8f0ba0b95ab93aaa0180b8b8d41/cryo.jpeg", 
             text: "Eredeti funkció: Központi, precíziós klímaszabályozó rendszer. A 'Project Rebirth' mintái rendkívül gyors reakcióidővel rendelkeztek magasabb hőmérsékleten, ezért a kísérleti térben állandó, alacsony hőmérsékletet kellett biztosítani. Ez garantálta, hogy a sejtburjánzás vizsgálata menedzselhető, stabil tempóban haladhasson.\n\nJelenlegi állapot: A rendszert nem extérm fagyasztásra tervezték; technikai korlátai miatt klimatikus hűtésre optimalizálták. A központi AI leállítása és az automatika meghibásodása miatt a rendszer manuális felülbírálatot (Override) igényel. A Recovery Unit a PDA-járól túlterheli a hűtőkört, kényszerítve az egységet, hogy hirtelen, maximális teljesítménnyel engedje ki a folyékony nitrogént.\n\nMűködtetése: Ez a drasztikus túlterhelés magyarázza, miért csak nagyon rövid ideig működtethető fagyasztó zónaként. Figyelem: Ez szoftver-licenc bővítés, nem fizikai fegyverfejlesztés. Magasabb hozzáférési szint vásárlásával a PDA finomhangolja az overdrive-szekvenciát, növelve az overload hatékonyságát, így a fagyasztás időtartama kismértékben meghosszabbítható (Szintenként +2 mp)."
         }
     ]
