@@ -1334,7 +1334,7 @@ function animate() {
                         playerArmor = 0;
                     }
                 }
-                if (playerDamage > 0) playerHealth -= playerDamage; 
+             if (playerDamage > 0 && !isGodMode) playerHealth -= playerDamage; // <-- Védve!
                 // ----------------------------------
 
                 if (typeof updateUI === 'function') updateUI();
@@ -1784,8 +1784,7 @@ function animate() {
                     playerArmor = 0; 
                 }
             }
-            // A maradék sebzés (ha átütötte a páncélt, vagy már nem volt páncél) lemegy a HP-ból!
-            if (rawDamage > 0) playerHealth -= rawDamage;
+            if (rawDamage > 0 && !isGodMode) playerHealth -= rawDamage; // <-- Védve!
             // ==========================================
 
             // --- ÚJ: DIREKTÍVA CHECK (Sérülés) ---
@@ -1982,7 +1981,7 @@ function animate() {
                     playerArmor = 0;
                 }
             }
-            if (explosionDamage > 0) playerHealth -= explosionDamage;
+          if (explosionDamage > 0 && !isGodMode) playerHealth -= explosionDamage;
             // ==========================================
 
             // AZONNALI SEBZÉS (-20 HP)
@@ -2015,7 +2014,7 @@ function animate() {
         // Másodpercenként -2 HP a méregtől
         if (druggedTickTimer >= 1.0) {
             druggedTickTimer = 0;
-            playerHealth -= 2; 
+            if (!isGodMode) playerHealth -= 2;
             playSound('hurt'); 
             if (typeof updateUI === 'function') updateUI();
         }
