@@ -5,6 +5,8 @@ var globalVolume = 1.0;
 var globalBrightness = 1.0;
 var mouseSensitivity = 0.003;
 
+var isGodMode = false;
+
 var playerHealth = 100;
 var playerArmor = 0; 
 var playerMedkits = 0; 
