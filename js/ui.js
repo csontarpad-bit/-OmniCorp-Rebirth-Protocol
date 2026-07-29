@@ -1340,3 +1340,90 @@ if(pauseCodexBtn) {
         if (typeof renderArchiveList === 'function') renderArchiveList();
     });
 }
+
+// ==========================================
+// FEJLESZTŐI (DEV) MENÜ LOGIKA (BIZTONSÁGOS)
+// ==========================================
+
+// BIZTONSÁGOS AKTIVÁLÁS: Csak akkor fusson le, ha tényleg megnyomták a gombot, és az elem létezik!
+document.addEventListener('keydown', (e) => {
+    if (e.key === '0') {
+        const devMenuEl = document.getElementById('dev-menu');
+        if (devMenuEl) {
+            if (devMenuEl.classList.contains('hidden')) {
+                devMenuEl.classList.remove('hidden');
+            } else {
+                devMenuEl.classList.add('hidden');
+            }
+        }
+    }
+});
+
+// A gombok is csak a teljes betöltés után aktívak!
+document.addEventListener("DOMContentLoaded", () => {
+    const devMenu = document.getElementById('dev-menu');
+    const devClose = document.getElementById('dev-close');
+    const devMoney = document.getElementById('dev-add-money');
+    const devWave = document.getElementById('dev-wave-99');
+    const devUnlock = document.getElementById('dev-unlock-all');
+    const devGod = document.getElementById('dev-god-mode');
+
+    // Bezáró gomb
+    if (devClose && devMenu) {
+        devClose.addEventListener('click', () => devMenu.classList.add('hidden'));
+    }
+
+    // 2. Pénz adása
+    if (devMoney) {
+        devMoney.addEventListener('click', () => {
+            score += 10000;
+            if(typeof updateShopButtons === 'function') updateShopButtons();
+            if(typeof updateUI === 'function') updateUI();
+            console.log("DEV: +10.000 CR");
+        });
+    }
+
+    // 3. Ugrás a 99. Hullámra
+    if (devWave) {
+        devWave.addEventListener('click', () => {
+            currentWave = 99;
+            enemiesToSpawn = 30; // Brutális mennyiségű zombi
+            if(typeof playerStats !== 'undefined') playerStats.wavesSurvived = 98; 
+            console.log("DEV: Hullám beállítva 99-re!");
+        });
+    }
+
+    // 4. Kódex (Archívum) teljes feloldása
+    if (devUnlock) {
+        devUnlock.addEventListener('click', () => {
+            if(typeof playerStats !== 'undefined') {
+                const enemies = ['normal', 'runner', 'tank', 'stalker', 'crawler', 'boss', 'alpha'];
+                enemies.forEach(e => {
+                    if(playerStats.kills[e]) {
+                        playerStats.kills[e].body = 50;
+                        playerStats.kills[e].head = 50;
+                    }
+                });
+                playerStats.plantsDestroyed = 10;
+                playerStats.wavesSurvived = 100;
+                console.log("DEV: Minden adatbázis elem feloldva (Level 5)!");
+                if (typeof renderArchiveList === 'function') renderArchiveList();
+            }
+        });
+    }
+
+    // 5. God Mode (Sérthetetlenség)
+    if (devGod) {
+        devGod.addEventListener('click', () => {
+            if (typeof isGodMode !== 'undefined') {
+                isGodMode = !isGodMode;
+                devGod.innerText = isGodMode ? "GOD MODE: BE" : "GOD MODE: KI";
+                devGod.style.background = isGodMode ? "#ff00ff" : "#220022";
+                devGod.style.color = isGodMode ? "#000" : "#ff00ff";
+                console.log("DEV: God Mode " + (isGodMode ? "BE" : "KI"));
+            } else {
+                console.error("DEV HIBA: isGodMode változó nem található a state.js-ben!");
+            }
+        });
+    }
+});
