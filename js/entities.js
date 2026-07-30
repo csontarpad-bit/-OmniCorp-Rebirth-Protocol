@@ -416,6 +416,7 @@ enemies.push({
         attackAction: attackAction, 
         deathAction: deathAction, 
         hasDeathAnim: hasDeathAnim, 
+        roarTimer: 0,
         frozen: false, // <--- ÚJ: BIZTOSÍTJUK, HOGY NE LEGYEN LEFAGYVA ÚJRAÉLEDÉSKOR!
         currentAction: runAction,
         lifeTime: (type === 'crawler') ? 12.0 : Infinity 
