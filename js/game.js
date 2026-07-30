@@ -186,7 +186,7 @@ loadSound('iceCrack', 'https://raw.githubusercontent.com/csontarpad-bit/-OmniCor
 loadSound('footstep', 'https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/dd55e7027743a8ed1ec9aa2c9bd70895c3605773/foot%20%20step.mp3', 0.8);
 loadSound('deathScream', 'https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/dd55e7027743a8ed1ec9aa2c9bd70895c3605773/Death%20scream.mp3', 1.0);
 loadSound('burst', 'https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/df6d333b9936fa81cffbce5c2bdb8891eaf9ee37/burst.mp3', 1.0);
-loadSound('bossAttack', 'https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/7881058577cd484c3ba7beba64556801e1704209/boss%20screem.mp3', 1.0);
+loadSound('bossAttack', 'https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/d992c4493c5e5a4fb0c3e9d8134bdc308aa5f46d/boss%20screem%20v2.mp3', 1.0,);
 loadSound('cry', 'https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/40bf509427fc680fb017d8e5c47594250ad9ae93/cry.mp3', 1.0);
 loadSound('glitch', 'https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/102a0d507c37ef59b9aeb075e1b30110c95f3b3f/noice02.mp3', 1.0);
 loadSound('music', 'https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/f162302b83992b9adfe75b1c3ade387a25e2478d/music.mp3', 0.3, true); 
@@ -204,10 +204,29 @@ window.unlockAudio = function() {
     if (sounds['music'] && sounds['music'].buffer && !sounds['music'].isPlaying) sounds['music'].play();
 }
 
-window.playSound = function(name, offset = 0) {
+window.playSound = function(name, offset = 0, fadeOutDuration = 0) {
     if (sounds[name] && sounds[name].buffer) {
+        
+        // HA FADE OUT KELL (Kizárólag akkor használjuk, amikor elhallgattatjuk a bosst)
+        if (fadeOutDuration > 0 && sounds[name].isPlaying) {
+            let gainNode = sounds[name].gain.gain;
+            gainNode.cancelScheduledValues(listener.context.currentTime);
+            gainNode.linearRampToValueAtTime(0.01, listener.context.currentTime + fadeOutDuration);
+            setTimeout(() => { 
+                if (sounds[name].isPlaying) {
+                    sounds[name].stop();
+                    gainNode.setValueAtTime(sounds[name].getVolume(), listener.context.currentTime); // Visszaállítjuk a hangerőt a kövi lejátszáshoz
+                }
+            }, fadeOutDuration * 1000);
+            return;
+        }
+
+        // NORMÁL LEJÁTSZÁS (Fegyverek, Lépések, Boss indulása)
         if (sounds[name].isPlaying) sounds[name].stop();
         sounds[name].offset = offset;
+        
+        // Biztosítjuk, hogy normál hangerőn szólaljon meg (ha előtte le lett volna halkítva)
+        sounds[name].gain.gain.setValueAtTime(sounds[name].getVolume(), listener.context.currentTime);
         sounds[name].play();
     }
 }
@@ -654,8 +673,15 @@ scene.add(cylinder);
                     score += isHeadshot ? 50 : 10;
                     if (typeof updateUI === 'function') updateUI();
 
-                   if (en.health <= 0) {
+if (en.health <= 0) {
                         playSound(en.type === 'crawler' ? 'cry' : 'zombieDie');
+                        
+                        // --- JAVÍTÁS: Ha a Boss meghalt, AZONNAL némítsuk el az ordítását! ---
+                        if (en.type === 'boss' && sounds['bossAttack']) {
+                            sounds['bossAttack'].stop();
+                        }
+                        // ----------------------------------------------------------------------
+                        
                         let rewardAmmount = isHeadshot ? en.reward * 1.5 : en.reward;
                         score += rewardAmmount; 
                         
@@ -724,10 +750,15 @@ scene.add(cylinder);
                         let hIdx = enemyHitboxes.indexOf(en.headHitbox);
                         if (hIdx > -1) enemyHitboxes.splice(hIdx, 1);
 
-                        // 2. HALÁL ANIMÁCIÓ (VAGY FAGYASZTÁS) ERŐSZAKOS INDÍTÁSA
+                      
+                      // 2. HALÁL ANIMÁCIÓ (VAGY FAGYASZTÁS) ERŐSZAKOS INDÍTÁSA
                         let animDuration = 0;
+                        
+                        // --- JAVÍTÁS: KIOLVASZTJUK A MIXERT, HOGY EL TUDJON ESNI! ---
+                        if (en.mixer) en.mixer.timeScale = 1.0;
+
                         if (en.hasDeathAnim && en.deathAction) {
-                            // Szigorú átváltás: leállítunk minden korábbi animációt (sétát, támadást)!
+                            // Szigorú átváltás: leállítunk minden korábbi animációt!
                             en.mixer.stopAllAction();
                             
                             // Azonnal elindítjuk a halált!
@@ -1267,6 +1298,62 @@ window.startGame = function() {
 
 let currentBob = 0;
 
+// ==========================================
+// --- ÚJ: BOSS SPÓRA-ÜVÖLTÉS (BIOMASSZA FÜST) EFFEKT ---
+// ==========================================
+function spawnBossShockwave(bossMesh) {
+    // Ha még nem létezik a köd-textúránk (bár már legeneráltuk feljebb), biztonsági fék
+    if (typeof fogTexture === 'undefined') return;
+
+    // Kiszámoljuk az irányt a játékos felé a szörny fejétől
+    let startPos = bossMesh.position.clone();
+    startPos.y += 2.5; // A fej (száj) magassága
+    
+    // A célpont a kamera, de egy kicsit lejjebb (a mellkasod felé), hogy betöltse a képernyőt
+
+    // Mindig pontosan abba az irányba lőjük, amerre a Boss teste éppen áll!
+    const forwardDir = new THREE.Vector3(0, 0, 1);
+    // Átvesszük a Boss forgását (quaternion), így a vektor előre mutat a szörny szemszögéből!
+    forwardDir.applyQuaternion(bossMesh.quaternion).normalize();
+
+    // Létrehozunk egyedi anyagot minden "köpésnek", hogy a halványodást (opacity) külön tudjuk kezelni!
+    // FONTOS: Vöröses-Narancssárga szín a kritikus anomália jelzésére!
+    const puffMat = new THREE.SpriteMaterial({
+        map: fogTexture,
+        color: 0xff3300,       // Erős, izzó vörös-narancs
+        transparent: true,
+        opacity: 0.8,          // Masszív kezdő sűrűség
+        blending: THREE.AdditiveBlending,
+        depthWrite: false
+    });
+
+// Egyszerre 8 füstpamacsot lő ki egy "adagban", így sokkal sűrűbb lesz a sugár!
+    for (let j = 0; j < 8; j++) {
+        const puff = new THREE.Sprite(puffMat.clone()); // Klónozzuk a mat-ot, hogy egyedileg halványuljon
+        
+        // Pici szórás (hogy felhő formája legyen, ne egy vonalban jöjjenek)
+        let spreadX = (Math.random() - 0.5) * 1.5;
+        let spreadY = (Math.random() - 0.5) * 1.5;
+        
+        puff.position.set(startPos.x + spreadX, startPos.y + spreadY, startPos.z);
+        
+        // Kezdőméret: már a szájánál is hatalmas (2-3 méter átmérőjű)
+        let initialScale = Math.random() * 2.0 + 2.0; 
+        puff.scale.set(initialScale, initialScale, 1);
+        
+        scene.add(puff);
+
+        shockwaves.push({ 
+            mesh: puff, 
+            life: 1.0, 
+            direction: forwardDir,
+            speed: Math.random() * 5.0 + 15.0, // Nagyon gyorsan repülnek az arcodba
+            growth: Math.random() * 8.0 + 5.0,  // Folyamatosan dagadnak repülés közben
+            rotSpeed: (Math.random() - 0.5) * 5.0 // Forognak, ahogy szállnak
+        });
+    }
+}
+
 function animate() {
     requestAnimationFrame(animate); 
     const delta = clock.getDelta();
@@ -1759,10 +1846,58 @@ function animate() {
             continue; // Kihagyja a normál zombi támadást
         }
        
-        // 1. Egyedi támadási távolság: A Boss-nak sokkal hosszabb a keze (6.0), a többinek marad a 3.0
-        let attackRange = (en.type === 'boss') ? 6.0 : 3.0;
+// 1. Egyedi támadási távolság: A Boss-nak sokkal hosszabb a keze (8.0), a többinek marad a 3.0
+        let attackRange = (en.type === 'boss') ? 8.0 : 3.0;
         
-        if (distToPlayer <= attackRange) {
+        // --- ÚJ LOGIKA: BOSS ÜVÖLTÉS ÉS PIHENŐ (COOLDOWN) IDŐZÍTŐ ---
+        
+        // Ha nem létezik a pihenő időzítő, hozzuk létre
+        if (typeof en.attackRestTimer === 'undefined') en.attackRestTimer = 0;
+        
+        // Pihenés csökkentése (ha épp pihen)
+        if (en.attackRestTimer > 0) {
+            en.attackRestTimer -= delta;
+        }
+
+        // Ha a boss épp ordít, az időzítő csökken
+        if (en.roarTimer > 0) {
+            en.roarTimer -= delta;
+            
+            // Ha Boss, és épp ordít, folyamatosan lőjünk ki egy hanghullámot!
+            if (en.type === 'boss') {
+                if (typeof en.waveCooldown === 'undefined') en.waveCooldown = 0;
+                en.waveCooldown -= delta;
+                
+                if (en.waveCooldown <= 0) {
+                    spawnBossShockwave(en.mesh);
+                    en.waveCooldown = 0.15; // 0.15 másodpercenként újabb lökéshullám (folyamatos áradat)!
+                }
+            }
+            
+            // FONTOS: Ha most ért véget az üvöltés (0 alá esett az idő), kezdjen el PIHENNI 1 másodpercig!
+            if (en.roarTimer <= 0) {
+                en.attackRestTimer = 1.0; 
+            }
+        }
+        
+        // ==========================================
+        // TÁMADÁS INDÍTÁSA (Ha elég közel vagy ÉS NEM PIHEN ÉPPEN)
+        // ==========================================
+        if (distToPlayer <= attackRange && en.attackRestTimer <= 0) {
+            
+            // --- ÚJ: BOSS SZINKRONIZÁLT TÁMADÁS ---
+            if (en.type === 'boss' && en.roarTimer <= 0) {
+                en.roarTimer = 3.8; 
+                en.waveCooldown = 0; 
+                
+                // Mielőtt elkezdi az üvöltést, UTOLJÁRA feléd fordul, aztán belefagy a pózba!
+                en.mesh.lookAt(savedCamX, 0, camera.position.z);
+                
+                if (!sounds['bossAttack'] || !sounds['bossAttack'].isPlaying) {
+                    playSound('bossAttack'); 
+                }
+            }
+
             // TÁMADÁS ANIMÁCIÓ BEKAPCSOLÁSA (Ha van)
             if (en.attackAction && en.currentAction !== en.attackAction) {
                 en.runAction.fadeOut(0.2);
@@ -1770,108 +1905,133 @@ function animate() {
                 en.currentAction = en.attackAction;
             }
 
-            const stats = difficultySettings[currentDifficulty];
-            let rawDamage = stats.damage * en.damageMult; 
-
+           // ==========================================
+            // --- ÚJ: TÖLCSÉR-SEBZÉS (CSAK ELŐLRE SEBEZ) ---
             // ==========================================
-            // --- ÚJ: PÁNCÉL FOGJA FEL A SEBZÉST ELŐSZÖR ---
-            if (playerArmor > 0) {
-                if (playerArmor >= rawDamage) {
-                    playerArmor -= rawDamage; // A páncél mindent felfogott
-                    rawDamage = 0; 
-                } else {
-                    rawDamage -= playerArmor; // Páncél eltört, kiszámoljuk a maradékot
-                    playerArmor = 0; 
+            let isInCone = true; // Alap zombiknál mindig igaz, ők körben sebeznek
+
+            if (en.type === 'boss') {
+                // Megnézzük a Boss előre mutató vektorát (amerre a teste néz)
+                let bossForward = new THREE.Vector3(0, 0, 1).applyQuaternion(en.mesh.quaternion).normalize();
+                
+                // Kiszámoljuk a vektort, ami a Bosstól a játékos felé mutat
+                let dirToPlayer = new THREE.Vector3().subVectors(camera.position, en.mesh.position).normalize();
+                dirToPlayer.y = 0; // Síkban nézzük, a magasság most nem számít
+                bossForward.y = 0;
+                bossForward.normalize();
+
+                // Kiszámoljuk a két vektor által bezárt szöget
+                // A "dot product" egy számot ad -1 és 1 között. A 0.85 kb 30 fok eltérést jelent (összesen 60 fokos tölcsér).
+                let dotProduct = bossForward.dot(dirToPlayer);
+
+                // Ha a dotProduct kisebb, mint 0.85, akkor a játékos kívül esik a 90 fokos tölcséren!
+                if (dotProduct < 0.85) {
+                    isInCone = false; // Háta mögött / nagyon oldalt van!
                 }
             }
-            if (rawDamage > 0 && !isGodMode) playerHealth -= rawDamage; // <-- Védve!
-            // ==========================================
 
-            // --- ÚJ: DIREKTÍVA CHECK (Sérülés) ---
-            checkDirective('take_damage', en.type);
-
-            // --- ÚJ: DIREKTÍVA CHECK (Sérülés) ---
-            checkDirective('take_damage', en.type);
-            
-            if (typeof updateUI === 'function') updateUI(); 
-            const screenBlood = document.getElementById('screen-blood');
-            if (screenBlood) screenBlood.style.opacity = 1.0;
-            
-            // Ha épp letelt a sebzés-késleltetés, akkor játsszuk le a fájdalom/ijesztés hangokat
-            if (damageCooldown <= 0) { 
-                damageCooldown = 1.0; 
-                cameraShake = 0.5; 
+            // CSAK AKKOR SEBEZ ÉS RÁZZA A KÉPERNYŐT, HA A TÖLCSÉREN BELÜL VAGY!
+            if (isInCone) {
                 
-                // --- ÚJ: BOSS EFFEKTEK ---
-                if (en.type === 'boss') {
-                    playSound('bossAttack'); // Őrjöngő üvöltés
-                    // Képernyő glitch
-                    const glitchOverlay = document.getElementById('glitch-overlay');
-                    if (glitchOverlay) {
-                        glitchOverlay.classList.remove('hidden');
-                        glitchOverlay.classList.add('glitch-active');
-                        // Fél másodperc után elmúlik a zavar
-                        setTimeout(() => {
-                            glitchOverlay.classList.remove('glitch-active');
-                            glitchOverlay.classList.add('hidden');
-                        }, 500);
-                    }
-                } else {
-                    playSound('hurt'); // Normál zombinál csak te kiáltasz fel
-                }
-            } 
-            
-            // ... (Itt folytatódik a meglévő Halál/Újraéledés (Revive) kódod)
-            
-// Halál ÉS Újraéledés (Revive) mechanika
-            if (playerHealth <= 0) {
-                if (skills.revive.level > 0 && gameState === 'PLAYING') {
-                    // FELÉLEDÉS!
-                    skills.revive.level--;
-                    playerHealth = 100 + (skills.maxHealth.level * 20); // Max életre gyógyul
-                    invincibilityTimer = 2.0; // 2 másodperc I-Frame
-                    playSound('heal'); // Használjuk a gyógyulás hangját éledéskor
+                // Sebzés kiosztása (Ha letelt a késleltetésed)
+                if (damageCooldown <= 0) { 
+                    damageCooldown = 1.0; 
+                    cameraShake = 0.5; 
                     
-                    // Képernyő villanás
-                    const healFlash = document.getElementById('heal-flash');
-                    if (healFlash) { healFlash.style.opacity = 1; setTimeout(() => healFlash.style.opacity = 0, 500); }
-                    if (typeof updateUI === 'function') updateShopButtons(); // Frissítjük a bolt gombot is
-               } else {
-                        // ÚJ: Halálhörgés!
-                        playSound('deathScream');
+                    if (en.type === 'boss') {
+                        // Képernyő glitch CSAK ha el is talált a hanghullám!
+                        const glitchOverlay = document.getElementById('glitch-overlay');
+                        if (glitchOverlay) {
+                            glitchOverlay.classList.remove('hidden');
+                            glitchOverlay.classList.add('glitch-active');
+                            setTimeout(() => {
+                                glitchOverlay.classList.remove('glitch-active');
+                                glitchOverlay.classList.add('hidden');
+                            }, 500);
+                        }
+                    } else {
+                        playSound('hurt'); 
+                    }
+                } 
+
+                // Sebzés számolás (Páncél + Élet)
+                const stats = difficultySettings[currentDifficulty];
+                let rawDamage = stats.damage * en.damageMult; 
+
+                if (playerArmor > 0) {
+                    if (playerArmor >= rawDamage) {
+                        playerArmor -= rawDamage; 
+                        rawDamage = 0; 
+                    } else {
+                        rawDamage -= playerArmor; 
+                        playerArmor = 0; 
+                    }
+                }
+                if (rawDamage > 0 && !isGodMode) playerHealth -= rawDamage;
+
+                checkDirective('take_damage', en.type);
+                
+                if (typeof updateUI === 'function') updateUI(); 
+                const screenBlood = document.getElementById('screen-blood');
+                if (screenBlood) screenBlood.style.opacity = 1.0;
+
+                // Halál ellenőrzés
+                if (playerHealth <= 0) {
+                    if (skills.revive.level > 0 && gameState === 'PLAYING') {
+                        skills.revive.level--;
+                        playerHealth = 100 + (skills.maxHealth.level * 20); 
+                        invincibilityTimer = 2.0; 
+                        playSound('heal'); 
                         
+                        const healFlash = document.getElementById('heal-flash');
+                        if (healFlash) { healFlash.style.opacity = 1; setTimeout(() => healFlash.style.opacity = 0, 500); }
+                        if (typeof updateUI === 'function') updateShopButtons(); 
+                    } else {
+                        playSound('deathScream');
                         gameState = 'GAMEOVER'; 
                         document.exitPointerLock(); 
-                        document.getElementById('final-score').innerText = `PÉNZ: ${score}`; 
-                        document.getElementById('final-wave').innerText = `TÚLÉLT HULLÁMOK: ${currentWave}`; 
+                        document.getElementById('final-score').innerText = `ADAT: ${score} CR`; 
+                        document.getElementById('final-wave').innerText = `TÚLÉLT ITERÁCIÓ: ${currentWave}`; 
                         document.getElementById('game-over').classList.remove('hidden');
                     }
-            }
+                }
+            } // (Itt ér véget az "if (isInCone)" blokk!)
+            // ==========================================
+
         } else {
-            const enemyDir = new THREE.Vector3().subVectors(new THREE.Vector3(savedCamX, 0, camera.position.z), en.mesh.position).normalize(); 
-
-            // FUTÁS ANIMÁCIÓ VISSZAKAPCSOLÁSA
-            if (en.attackAction && en.currentAction !== en.runAction) {
-                en.attackAction.fadeOut(0.2);
-                en.runAction.reset().fadeIn(0.2).play();
-                en.currentAction = en.runAction;
-            }
-
-            enemyDir.y = 0; en.mesh.lookAt(savedCamX, 0, camera.position.z); 
+         
             
-            let sep = new THREE.Vector3();
-            for (let j = 0; j < enemies.length; j++) {
-                if (i !== j) {
-                    let d = Math.hypot(en.mesh.position.x - enemies[j].mesh.position.x, en.mesh.position.z - enemies[j].mesh.position.z);
-                    if (d < enemyRadius * 1.5 && d > 0.01) {
-                        sep.add(new THREE.Vector3().subVectors(en.mesh.position, enemies[j].mesh.position).normalize().multiplyScalar((enemyRadius * 1.5 - d) * 0.05));
+            // --- HA MESSZE VAGY TŐLE ---
+            // A BOSS CSAK AKKOR FUT UTÁNAD, HA MÁR BEFEJEZTE AZ ORDÍTÁST!
+            if (en.type === 'boss' && en.roarTimer > 0) {
+                // ITT NEM CSINÁLUNK SEMMIT! A szörny beleragadt az üvöltés irányába.
+                // Ha a játékos oldalra fut, az üvöltés és a gőz a "semmibe" fog menni!
+            } else {
+                const enemyDir = new THREE.Vector3().subVectors(new THREE.Vector3(savedCamX, 0, camera.position.z), en.mesh.position).normalize(); 
+
+                // FUTÁS ANIMÁCIÓ VISSZAKAPCSOLÁSA
+                if (en.attackAction && en.currentAction !== en.runAction) {
+                    en.attackAction.fadeOut(0.2);
+                    en.runAction.reset().fadeIn(0.2).play();
+                    en.currentAction = en.runAction;
+                }
+
+                enemyDir.y = 0; en.mesh.lookAt(savedCamX, 0, camera.position.z); 
+                
+                let sep = new THREE.Vector3();
+                for (let j = 0; j < enemies.length; j++) {
+                    if (i !== j) {
+                        let d = Math.hypot(en.mesh.position.x - enemies[j].mesh.position.x, en.mesh.position.z - enemies[j].mesh.position.z);
+                        if (d < enemyRadius * 1.5 && d > 0.01) {
+                            sep.add(new THREE.Vector3().subVectors(en.mesh.position, enemies[j].mesh.position).normalize().multiplyScalar((enemyRadius * 1.5 - d) * 0.05));
+                        }
                     }
                 }
+                
+                let mX = (enemyDir.x * en.speed) + sep.x; let mZ = (enemyDir.z * en.speed) + sep.z;
+                if (!checkWallCollision(en.mesh.position.x + mX, en.mesh.position.z, enemyRadius)) en.mesh.position.x += mX;
+                if (!checkWallCollision(en.mesh.position.x, en.mesh.position.z + mZ, enemyRadius)) en.mesh.position.z += mZ;
             }
-            
-            let mX = (enemyDir.x * en.speed) + sep.x; let mZ = (enemyDir.z * en.speed) + sep.z;
-            if (!checkWallCollision(en.mesh.position.x + mX, en.mesh.position.z, enemyRadius)) en.mesh.position.x += mX;
-            if (!checkWallCollision(en.mesh.position.x, en.mesh.position.z + mZ, enemyRadius)) en.mesh.position.z += mZ;
         }
 
         if (en.blip) {
@@ -2112,6 +2272,35 @@ function animate() {
                 p.active = false; 
                 p.mesh.visible = false; 
             }
+        }
+    }
+
+   // ==========================================
+    // --- ÚJ: BOSS SPÓRA-ÜVÖLTÉS ANIMÁLÁSA ---
+    // ==========================================
+    for (let i = shockwaves.length - 1; i >= 0; i--) {
+        let sw = shockwaves[i];
+        
+        sw.life -= delta * 1.2; // Kb. 0.8 másodperc alatt oszlik el
+        
+        // 1. Tágulás (A füst folyamatosan hatalmasra nő az arcodba)
+        let currentScale = sw.mesh.scale.x + (sw.growth * delta);
+        sw.mesh.scale.set(currentScale, currentScale, 1);
+        
+        // 2. Repülés a játékos felé
+        sw.mesh.position.add(sw.direction.clone().multiplyScalar(sw.speed * delta));
+        
+        // 3. Forgás (A SpriteMaterial-nál így kell forgatni!)
+        sw.mesh.material.rotation += sw.rotSpeed * delta;
+        
+        // 4. Halványulás (Fade Out)
+        sw.mesh.material.opacity = Math.max(0, sw.life * 0.8);
+
+        // Ha eloszlott, töröljük a memóriából
+        if (sw.life <= 0) {
+            scene.remove(sw.mesh);
+            sw.mesh.material.dispose();
+            shockwaves.splice(i, 1);
         }
     }
 
