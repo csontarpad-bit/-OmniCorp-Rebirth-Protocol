@@ -1373,13 +1373,17 @@ document.addEventListener("DOMContentLoaded", () => {
         devClose.addEventListener('click', () => devMenu.classList.add('hidden'));
     }
 
-    // 2. Pénz adása
+   // 2. Pénz adása
     if (devMoney) {
         devMoney.addEventListener('click', () => {
             score += 10000;
             if(typeof updateShopButtons === 'function') updateShopButtons();
             if(typeof updateUI === 'function') updateUI();
             console.log("DEV: +10.000 CR");
+            
+            // --- VILLANÁS ---
+            devMoney.style.background = "#00ffff"; devMoney.style.color = "#000";
+            setTimeout(() => { devMoney.style.background = "rgba(0, 50, 50, 0.8)"; devMoney.style.color = "#00ffff"; }, 150);
         });
     }
 
@@ -1390,6 +1394,10 @@ document.addEventListener("DOMContentLoaded", () => {
             enemiesToSpawn = 30; // Brutális mennyiségű zombi
             if(typeof playerStats !== 'undefined') playerStats.wavesSurvived = 98; 
             console.log("DEV: Hullám beállítva 99-re!");
+            
+            // --- VILLANÁS ---
+            devWave.style.background = "#00ffff"; devWave.style.color = "#000";
+            setTimeout(() => { devWave.style.background = "rgba(0, 50, 50, 0.8)"; devWave.style.color = "#00ffff"; }, 150);
         });
     }
 
@@ -1409,17 +1417,25 @@ document.addEventListener("DOMContentLoaded", () => {
                 console.log("DEV: Minden adatbázis elem feloldva (Level 5)!");
                 if (typeof renderArchiveList === 'function') renderArchiveList();
             }
+            
+            // --- VILLANÁS ---
+            devUnlock.style.background = "#00ffff"; devUnlock.style.color = "#000";
+            setTimeout(() => { devUnlock.style.background = "rgba(0, 50, 50, 0.8)"; devUnlock.style.color = "#00ffff"; }, 150);
         });
     }
 
-    // 5. God Mode (Sérthetetlenség)
+   // 5. God Mode (Sérthetetlenség)
     if (devGod) {
         devGod.addEventListener('click', () => {
             if (typeof isGodMode !== 'undefined') {
                 isGodMode = !isGodMode;
                 devGod.innerText = isGodMode ? "GOD MODE: BE" : "GOD MODE: KI";
-                devGod.style.background = isGodMode ? "#ff00ff" : "#220022";
-                devGod.style.color = isGodMode ? "#000" : "#ff00ff";
+                
+                // OmniCorp stílusú színezés váltáskor!
+                devGod.style.background = isGodMode ? "#00ffff" : "rgba(50, 0, 0, 0.8)";
+                devGod.style.color = isGodMode ? "#000" : "#ff5555";
+                devGod.style.borderColor = isGodMode ? "#00ffff" : "#aa0000";
+                
                 console.log("DEV: God Mode " + (isGodMode ? "BE" : "KI"));
             } else {
                 console.error("DEV HIBA: isGodMode változó nem található a state.js-ben!");
