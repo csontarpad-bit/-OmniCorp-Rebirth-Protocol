@@ -102,6 +102,7 @@ var toxicTickTimer = 0;
 // --- ÚJ: HULLÁK ÉS POOLING TÖMBÖK ---
 var deadBodies = []; // Ide kerülnek a földön fekvő hullák
 var zombiePool = []; // Ide kerülnek a padlóba süllyedt, újrahasznosítható zombik
+var shockwaves = [];
 
 var scene, camera, renderer, clock, listener, muzzleFlash, playerLight;
 var gunMixer, gunShootAction;
