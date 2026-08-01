@@ -1,7 +1,8 @@
 var gameState = 'LOADING'; 
 var highScore = 0;
 
-var globalVolume = 1.0;
+var musicVolume = 0.5;
+var sfxVolume = 1.0;
 var globalBrightness = 1.0;
 var mouseSensitivity = 0.003;
 
@@ -16,6 +17,7 @@ var currentWave = 1;
 var isWaveActive = false;
 var enemiesToSpawn = 5;
 var isReloading = false;
+var shopLockedForNextWave = false; // KRONOS büntetés szerződésszegésért
 var bloodOpacity = 0;
 var cameraShake = 0; 
 // A "waveStartTime" környékére szúrd be ezeket:
