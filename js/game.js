@@ -178,7 +178,7 @@ function loadSound(name, url, volume = 1.0, isLoop = false) {
         sound.setVolume(volume);
         sound.setLoop(isLoop);
         sounds[name] = sound;
-        if (name === 'music' && listener.context.state === 'running') sound.play();
+      
     });
 }
 loadSound('cryoGas', 'https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/5abe88d4b8b1dd33f0887daa25511297b89eecbd/cryo%20gas.mp3', 0.8);
@@ -2399,7 +2399,6 @@ const loadInterval = setInterval(() => {
 
 const introScreen = document.getElementById('intro-video-screen');
 const introVideo = document.getElementById('intro-video');
-const skipBtn = document.getElementById('skip-intro-btn');
 
 function showMainMenu() {
     // 1. Videó képernyő eltüntetése
@@ -2409,48 +2408,57 @@ function showMainMenu() {
     document.getElementById('main-menu').classList.remove('hidden');
     gameState = 'MENU'; 
     
-    if (sounds['menuMusic'] && sounds['menuMusic'].buffer && !sounds['menuMusic'].isPlaying) {
+    // Elindítjuk a nyugodt Főmenü zenét
+    if (typeof sounds !== 'undefined' && sounds['menuMusic'] && sounds['menuMusic'].buffer && !sounds['menuMusic'].isPlaying) {
         sounds['menuMusic'].play();
     }
 }
 
-// Kattintás a "Belépés a Rendszerbe" gombra
+// Kattintás a "Belépés a Rendszerbe" gombra a betöltés végén
 document.getElementById('loading-continue-btn').addEventListener('click', () => {
-    // Hangfeloldás
     if (listener.context.state === 'suspended') listener.context.resume();
     
     // Töltőképernyő eltüntetése
     const ls = document.getElementById('loading-screen');
     if (ls) {
         ls.style.opacity = '0'; 
-        setTimeout(() => ls.style.display = 'none', 1500);
+        setTimeout(() => ls.style.display = 'none', 1000);
     }
     
-    // Ha van betöltve videó (src), akkor lejátsszuk!
-    if (introVideo && introVideo.getAttribute('src') !== "A_TE_VIDEOD_LINKJE_IDE_JON.mp4") {
+    // JOGI LÉPÉS: Epilepszia figyelmeztetés megjelenítése!
+    const epiScreen = document.getElementById('epilepsy-screen');
+    if (epiScreen) epiScreen.classList.remove('hidden');
+});
+
+// Kattintás az "Elfogadom" gombra az epilepszia ablakon
+document.getElementById('epilepsy-accept-btn').addEventListener('click', () => {
+    const epiScreen = document.getElementById('epilepsy-screen');
+    if (epiScreen) epiScreen.classList.add('hidden');
+    
+    // Ha van Intro videó, lejátsszuk
+    if (introVideo && introVideo.getAttribute('src') !== "" && introVideo.getAttribute('src') !== null) {
         introScreen.classList.remove('hidden');
         introVideo.volume = 1.0; 
         introVideo.play().catch(e => {
-            // Ha a böngésző blokkolná az autoplays videót, azonnal ugrik a főmenübe!
-            console.warn("Videó lejátszás hiba:", e);
+            console.warn("Videó lejátszás hiba (Autoplay blokkolva):", e);
             showMainMenu();
         });
-        
-        // Ha véget ért a videó (10 mp után), ugorjon a Főmenübe!
-        introVideo.onended = () => {
-            showMainMenu();
-        };
+        introVideo.onended = () => showMainMenu();
     } else {
-        // Ha nincs megadva videó (vagy placeholder maradt), egyből Főmenü!
-        setTimeout(showMainMenu, 1500);
+        showMainMenu();
     }
 });
 
-// A SKIP (Kihagyás) gomb működése
-if (skipBtn && introVideo) {
-    skipBtn.addEventListener('click', () => {
-        introVideo.pause(); // Videó megállítása
-        showMainMenu();     // Ugrás a Főmenübe
+// --- JAVÍTÁS: A SKIP (Kihagyás) GOMB LOGIKÁJA ---
+const skipBtn = document.getElementById('skip-intro-btn');
+if (skipBtn) {
+    skipBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (introVideo) {
+            introVideo.pause(); 
+            introVideo.currentTime = 0; // Biztos, ami biztos lenullázzuk a videót
+        }
+        showMainMenu(); // Azonnal ugrik a főmenübe
     });
 }
 
