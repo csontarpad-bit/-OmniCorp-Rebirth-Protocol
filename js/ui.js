@@ -76,24 +76,7 @@ if (tabArchiveIngameBtn) {
     });
 }
 
-// AZ ARCHÍVUM BEZÁRÁSA (OKOS GOMB)
-const closeArchiveBtn = document.getElementById('close-archive-btn');
-if (closeArchiveBtn) {
-    closeArchiveBtn.addEventListener('click', () => {
-        if (archiveMenu) {
-            archiveMenu.classList.add('hidden');
-            archiveMenu.style.display = 'none'; 
-        }
-        
-        if (archiveOpenedFrom === 'mainMenu' && mainMenu) {
-            mainMenu.classList.remove('hidden');
-        } else if (archiveOpenedFrom === 'shopMenu' && shopMenu) {
-            shopMenu.classList.remove('hidden');
-        } else if (archiveOpenedFrom === 'pauseMenu') { // ÚJ!
-            document.getElementById('pause-menu').classList.remove('hidden');
-        }
-    });
-}
+
 
 // --- KÉPNAGYÍTÓ (LIGHTBOX) LOGIKA ---
 
@@ -257,6 +240,55 @@ window.openShop = function() {
     gameState = 'SHOPPING'; 
     shopMenu.classList.remove('hidden');
     
+    // ==========================================
+    // --- KRONOS BÜNTETÉS (SZERZŐDÉSSZEGÉS) ---
+    // ==========================================
+    if (shopLockedForNextWave) {
+        // Eltüntetjük a bolt normál felületét (fülek és kártyák)
+        document.querySelector('.shop-tabs').style.display = 'none';
+        document.getElementById('shop-weapons').classList.add('hidden');
+        document.getElementById('shop-skills').classList.add('hidden');
+        document.getElementById('shop-directives').classList.add('hidden');
+        
+        // Kicseréljük a felső feliratot
+        const shopPointsEl = document.getElementById('shop-points');
+        if (shopPointsEl) {
+            shopPointsEl.innerHTML = `<span style="color:#ff0000; font-weight:bold; font-size:30px;">ZÁROLVA</span>`;
+        }
+
+        // Beszúrunk egy nagy piros hibaüzenetet a képernyő közepére
+        let penaltyDiv = document.getElementById('penalty-screen');
+        if (!penaltyDiv) {
+            penaltyDiv = document.createElement('div');
+            penaltyDiv.id = 'penalty-screen';
+            penaltyDiv.style.textAlign = 'center';
+            penaltyDiv.style.marginTop = '40px';
+            penaltyDiv.style.marginBottom = '40px';
+            document.getElementById('terminal-screen').insertBefore(penaltyDiv, document.getElementById('close-shop-btn'));
+        }
+        
+        penaltyDiv.innerHTML = `
+            <div style="color: #ff0000; font-size: 50px; text-shadow: 0 0 20px #ff0000;">⚠️ HOZZÁFÉRÉS MEGTAGADVA ⚠️</div>
+            <div style="color: #ff5555; font-size: 20px; margin-top: 20px; font-weight: bold;">SZERZŐDÉSSZEGÉS ÉSZLELVE</div>
+            <div style="color: #aaa; font-size: 16px; margin-top: 15px; max-width: 600px; line-height: 1.5; margin-left: auto; margin-right: auto;">
+                A KRONOS protokoll megsértése miatt a vállalati nyomtatóhoz és orvosi készletekhez való hozzáférés ideiglenesen felfüggesztésre került. Az ellátmányozás a következő sikeres adatgyűjtési ciklus (hullám) után áll helyre.
+            </div>
+        `;
+        penaltyDiv.style.display = 'block';
+
+        // Levesszük a büntetést, hogy a KÖVETKEZŐ hullám után már megnyíljon a bolt
+        shopLockedForNextWave = false; 
+        return; // Itt kilépünk, nem futtatjuk le a normál bolt-frissítést!
+    }
+    // ==========================================
+
+    // HA NINCS BÜNTETÉS, MINDEN MEGY TOVÁBB NORMÁLISAN:
+    
+    // Visszaállítjuk a bolt normál kinézetét (ha előzőleg büntetésben voltunk)
+    document.querySelector('.shop-tabs').style.display = 'flex';
+    let penaltyDiv = document.getElementById('penalty-screen');
+    if (penaltyDiv) penaltyDiv.style.display = 'none';
+
     // Szép, zölden világító kiírás, ha kapott bónuszt!
     let bonusText = lastWaveBonus > 0 ? ` <span style="color:#00ff00; font-size:18px;">(+${lastWaveBonus} GYORSASÁGI BÓNUSZ)</span>` : '';
     shopPoints.innerHTML = `${score} CR ${bonusText}`;
@@ -905,34 +937,38 @@ window.showShieldIcon = function(shieldType) {
 }
 
 // ==========================================
-// VÁLLALATI DIREKTÍVÁK (SZERZŐDÉS RENDSZER)
+// VÁLLALATI DIREKTÍVÁK (SZERZŐDÉS RENDSZER) - BIZTONSÁGOS VERZIÓ
 // ==========================================
-const directivesMenu = document.getElementById('directives-menu');
-const dirContent = document.getElementById('dir-content');
-let dirOpenedFrom = 'mainMenu';
-let currentDirTier = 'info';
+var omniDirMenu = document.getElementById('directives-menu');
+var omniDirContent = document.getElementById('dir-content');
+window.omniDirOpenedFrom = 'mainMenu';
+window.omniCurrentDirTier = 'info';
 
 // Nyitás a Főmenüből
-const openDirBtn = document.getElementById('open-directives-btn');
-if (openDirBtn) {
-    openDirBtn.addEventListener('click', () => {
-        dirOpenedFrom = 'mainMenu';
-        mainMenu.classList.add('hidden');
-        directivesMenu.classList.remove('hidden');
-        directivesMenu.style.display = 'flex';
+var omniOpenDirBtn = document.getElementById('open-directives-btn');
+if (omniOpenDirBtn) {
+    omniOpenDirBtn.addEventListener('click', () => {
+        window.omniDirOpenedFrom = 'mainMenu';
+        if (typeof mainMenu !== 'undefined' && mainMenu) mainMenu.classList.add('hidden');
+        if (omniDirMenu) {
+            omniDirMenu.classList.remove('hidden');
+            omniDirMenu.style.display = 'flex';
+        }
         renderDirectivesTab('info');
     });
 }
 
 // Bezárás
-const closeDirBtn = document.getElementById('close-directives-btn');
-if (closeDirBtn) {
-    closeDirBtn.addEventListener('click', () => {
-        directivesMenu.classList.add('hidden');
-        directivesMenu.style.display = 'none';
-        if (dirOpenedFrom === 'mainMenu') mainMenu.classList.remove('hidden');
-        else if (dirOpenedFrom === 'shopMenu') shopMenu.classList.remove('hidden');
-        else if (dirOpenedFrom === 'pauseMenu') document.getElementById('pause-menu').classList.remove('hidden'); // ÚJ!
+var omniCloseDirBtn = document.getElementById('close-directives-btn');
+if (omniCloseDirBtn) {
+    omniCloseDirBtn.addEventListener('click', () => {
+        if (omniDirMenu) {
+            omniDirMenu.classList.add('hidden');
+            omniDirMenu.style.display = 'none';
+        }
+        if (window.omniDirOpenedFrom === 'mainMenu' && typeof mainMenu !== 'undefined') mainMenu.classList.remove('hidden');
+        else if (window.omniDirOpenedFrom === 'shopMenu' && typeof shopMenu !== 'undefined') shopMenu.classList.remove('hidden');
+        else if (window.omniDirOpenedFrom === 'pauseMenu') document.getElementById('pause-menu').classList.remove('hidden'); 
     });
 }
 
@@ -941,32 +977,39 @@ document.querySelectorAll('.dir-tab-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
         document.querySelectorAll('.dir-tab-btn').forEach(b => b.classList.remove('active'));
         e.target.classList.add('active');
-        currentDirTier = e.target.getAttribute('data-tier');
-        renderDirectivesTab(currentDirTier);
+        window.omniCurrentDirTier = e.target.getAttribute('data-tier');
+        renderDirectivesTab(window.omniCurrentDirTier);
     });
 });
 
 // A Lista Generálása
-function renderDirectivesTab(tier) {
-    dirContent.innerHTML = '';
+window.renderDirectivesTab = function(tier) {
+    if (!omniDirContent) return;
+    omniDirContent.innerHTML = '';
+    
+    // FŐCÍMEK DINAMIKUS ÁTÍRÁSA A LORE-HOZ
+    const dirHeader = document.querySelector('#directives-menu .terminal-header');
+    const dirSub = document.querySelector('#directives-menu .terminal-sub');
+    if (dirHeader) dirHeader.innerText = "KRONOS TELEMETRIAI RENDSZER";
+    if (dirSub) dirSub.innerText = "TERMINUS BÁNYÁSZATI ÉS KUTATÓÁLLOMÁS";
 
-    // 1. ÁTTEKINTÉS (LORE) FÜL PROFESSZIONÁLIS DÍZÁJNNAL ÉS KÉPPEL
+    // 1. ÁTTEKINTÉS (LORE) FÜL
     if (tier === 'info') {
-        dirContent.innerHTML = `
+        omniDirContent.innerHTML = `
             <div style="display: flex; gap: 20px;">
                 <div style="flex: 1;">
                     <img src="https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/5fcee7cf3f3f0e88f7fee28af836805a55f9490a/OmniCorp.jpeg" style="width: 100%; border: 2px solid #00ffff; box-shadow: 0 0 15px rgba(0,255,255,0.3); border-radius: 5px;">
                 </div>
                 <div style="flex: 2; color:#e0ffff; font-size:16px; line-height:1.6; font-family: 'Share Tech Mono', monospace;">
-                    <h3 style="color:#00ffff; margin-bottom: 10px;">TEREPI ADATGYŰJTÉSI PROTOKOLL</h3>
-                    Az OmniCorp Különleges Műveleti Osztálya üdvözli Önt. A szektor alapvető sterilizálása mellett kiemelt fontosságú a biológiai anomáliák terepi elemzése. A Vállalati Direktívák célja a kutatási adatok maximalizálása.<br><br>
-                    A sikeres adatszerzésért a Cég extra Kredittel kompenzálja a Takarítókat. Egyszerre kizárólag EGY szerződés lehet aktív.<br><br>
-                    <span style="color:#ff5555; font-weight: bold;">SZOLGÁLATI KÖZLEMÉNY:</span> Egy elfogadott Direktíva megszakítása a szerződés végleges érvénytelenítését vonja maga után. A magasabb Biztonsági Szintek (BÉTA, OMEGA) feloldása a sikeresen teljesített műveletek számához van kötve.
+                    <h3 style="color:#00ffff; margin-bottom: 5px; margin-top: 0;">[ RENDSZERÜZENET ]</h3>
+                    <span style="color:#00ffff; font-weight:bold;">KRONOS AI:</span> A Terminus Állomás lezárása aktív. A zsilipkapuk feloldásához a protokoll harci telemetriát követel a Verdant anomáliákról. A sikeres adatszerzésért a rendszer túlélési csomagokat (CR) hagy jóvá.<br><br>
+                    <span style="color:#ffaa00; font-weight:bold;">GALLAGHER:</span> "ECHO, én vagyok az! A gép megőrült. Nem enged tovább a szektorokban, amíg nem hajtod végre a 'tesztjeit'. Próbálom meghekkelni a kvótákat a vezérlőből, hogy túlélhesd. Végezd el a feladatokat, és kinyitom a következő ajtót!"<br><br>
+                    <span style="color:#ff5555; font-weight: bold;">KRONOS BIZTONSÁGI RENDSZER:</span> Egy folyamatban lévő protokoll megszakítása a szerződés végleges törlését vonja maga után. A Mélyszinti szektorok (BÉTA, OMEGA) kizárólag megfelelő mennyiségű adat feltöltése után nyílnak meg.
                 </div>
             </div>
             
             <div style="margin-top: 30px; border: 1px solid #00ffff; padding: 15px; background: rgba(0,30,30,0.6); box-shadow: inset 0 0 10px rgba(0,255,255,0.1);">
-                <h4 style="color:#fff; margin-bottom:10px;">JELENLEGI AKTÍV SZERZŐDÉS:</h4>
+                <h4 style="color:#fff; margin-bottom:10px; margin-top:0;">KRONOS ADATKAPCSOLAT: FOLYAMATBAN LÉVŐ TESZT</h4>
                 <div id="active-dir-display"></div>
             </div>
         `;
@@ -974,40 +1017,41 @@ function renderDirectivesTab(tier) {
         return;
     }
 
-   // 2. KÜLDETÉSEK LISTÁZÁSA ÉS SZIGORÚ ZÁROLÁS (ÉS KAPCSOLAT)
+   // 2. KÜLDETÉSEK LISTÁZÁSA ÉS ZÁROLÁS
     let isTierUnlocked = true;
-    let lockReason = "";
+    let lockReasonKronos = "";
+    let lockReasonGallagher = "";
 
-    // --- EZ A SOR HIÁNYZIK NÁLAD! ---
     let wave = typeof currentWave !== 'undefined' ? currentWave : 1;
-    // --------------------------------
 
-    // Béta Szint (Tier 2) Logika: Kell a 34. hullám ÉS 9 megcsinált küldetés!
     if (tier === 'tier2') {
         if (wave < 34 || playerStats.completedDirectives.length < 9) {
             isTierUnlocked = false; 
-            lockReason = "ELÉGTELEN BIZTONSÁGI SZINT.<br>Szükséges: 34. Hullám elérése ÉS minimum 9 db Alfa szintű szerződés teljesítése.";
+            lockReasonKronos = "ELÉGTELEN BIZTONSÁGI SZINT (KÖVETELMÉNY: 34. HULLÁM ÉS 9 ALFA ADATCSOMAG).";
+            lockReasonGallagher = "\"ECHO, még nem tudom átverni a tűzfalat! Juss mélyebbre, és csinálj meg még pár Alfa szintű tesztet, hogy feltörhessem a Béta zsilipet!\"";
         }
     } 
-    // Omega Szint (Tier 3) Logika: Kell a 67. hullám ÉS 20 megcsinált küldetés!
     else if (tier === 'tier3') {
         if (wave < 67 || playerStats.completedDirectives.length < 20) {
             isTierUnlocked = false; 
-            lockReason = "ELÉGTELEN BIZTONSÁGI SZINT.<br>Szükséges: 67. Hullám elérése ÉS minimum 20 db Béta/Alfa szintű szerződés teljesítése.";
+            lockReasonKronos = "ELÉGTELEN BIZTONSÁGI SZINT (KÖVETELMÉNY: 67. HULLÁM ÉS 20 ADATCSOMAG).";
+            lockReasonGallagher = "\"A Magot védő pajzs áttörhetetlen! Túl kevés adatunk van. Éld túl a 67. szektorig, és gyűjts be minden korábbi tesztet!\"";
         }
     }
 
     if (!isTierUnlocked) {
-        dirContent.innerHTML = `
-            <div style="text-align: center; margin-top: 50px;">
-                <span style="color:#f00; font-size: 24px; font-weight: bold; text-shadow: 0 0 10px #f00;">BELÉPÉS MEGTAGADVA</span><br><br>
-                <span style="color:#f00;">EZ A SZINT JELENLEG TITKOSÍTVA VAN.</span><br><br>
-                <span style="color:#aaa;">${lockReason}</span>
+        omniDirContent.innerHTML = `
+            <div style="text-align: center; margin-top: 50px; font-family: 'Share Tech Mono', monospace;">
+                <span style="color:#f00; font-size: 28px; font-weight: bold; text-shadow: 0 0 15px #f00;">ZSILIP ZÁROLVA</span><br><br>
+                <span style="color:#ff5555; font-size: 18px;">[ KRONOS AI ]: EZ A SZEKTOR JELENLEG TITKOSÍTVA VAN.</span><br><br>
+                <span style="color:#aaa; font-size: 14px;">${lockReasonKronos}</span><br><br>
+                <div style="margin-top: 30px; padding: 15px; border-top: 1px dashed #ffaa00; display: inline-block; max-width: 80%;">
+                    <span style="color:#ffaa00; font-style: italic;">GALLAGHER: ${lockReasonGallagher}</span>
+                </div>
             </div>`;
         return;
     }
 
-    // Ha fel van oldva, kilistázzuk az ÖSSZES küldetést abban a Tierben!
     let listHTML = `<div style="display:flex; flex-direction:column; gap:15px;">`;
     
     OmniCorpDirectives[tier].forEach(d => {
@@ -1020,17 +1064,17 @@ function renderDirectivesTab(tier) {
         let btnHTML = "";
 
       if (isCompleted) {
-            statusText = `<span style="color:#00ff00; font-weight:bold; float:right;">[ TELJESÍTVE ]</span>`;
-            bgColor = "rgba(0, 50, 50, 0.4)"; // Sötét türkiz
+            statusText = `<span style="color:#00ff00; font-weight:bold; float:right;">[ ADAT ELKÜLDVE ]</span>`;
+            bgColor = "rgba(0, 50, 50, 0.4)"; 
         } else if (isAbandoned) {
-            statusText = `<span style="color:#ff5555; font-weight:bold; float:right;">[ TÖRÖLVE ]</span>`;
-            bgColor = "rgba(50, 0, 0, 0.4)"; // Sötét piros
+            statusText = `<span style="color:#ff5555; font-weight:bold; float:right;">[ PROTOKOLL TÖRÖLVE ]</span>`;
+            bgColor = "rgba(50, 0, 0, 0.4)"; 
         } else if (isActive) {
-            statusText = `<span style="color:#00ffff; font-weight:bold; float:right;">[ FOLYAMATBAN: ${playerStats.directiveProgress} / ${d.goal} ]</span>`;
-            bgColor = "rgba(0, 60, 60, 0.8)"; // Erősebb cián
-            btnHTML = `<button class="directive-action-btn directive-abandon-btn" onclick="abandonDirective()">SZERZŐDÉS FELADÁSA</button>`;
+            statusText = `<span style="color:#00ffff; font-weight:bold; float:right;">[ ELEMZÉS: ${playerStats.directiveProgress} / ${d.goal} ]</span>`;
+            bgColor = "rgba(0, 60, 60, 0.8)"; 
+            btnHTML = `<button class="directive-action-btn directive-abandon-btn" onclick="abandonDirective()">TESZT MEGSZAKÍTÁSA</button>`;
         } else {
-            btnHTML = `<button class="directive-action-btn" onclick="acceptDirective('${d.id}')">ELFOGADÁSA</button>`;
+            btnHTML = `<button class="directive-action-btn" onclick="acceptDirective('${d.id}')">PROTOKOLL INDÍTÁSA</button>`;
         }
 
         listHTML += `
@@ -1038,23 +1082,23 @@ function renderDirectivesTab(tier) {
                 ${statusText}
                 <h4>${d.title}</h4>
                 <p>${d.desc}</p>
-                <div class="reward">JUTALOM: ${d.reward} CR</div>
+                <div class="reward">JÓVÁHAGYOTT TÚLÉLÉSI KERET: ${d.reward} CR</div>
                 ${btnHTML}
             </div>
         `;
     });
 
     listHTML += `</div>`;
-    dirContent.innerHTML = listHTML;
+    omniDirContent.innerHTML = listHTML;
 }
 
 // Az Áttekintés fülön lévő mini-kijelző
-function renderActiveDirectiveBox() {
+window.renderActiveDirectiveBox = function() {
     let target = document.getElementById('active-dir-display');
     if (!target) return;
 
     if (!playerStats.activeDirective) {
-        target.innerHTML = `<span style="color:#888;">Nincs aktív szerződés. Válasszon egyet a szintek fülön!</span>`;
+        target.innerHTML = `<span style="color:#888;">Nincs aktív telemetriai kapcsolat. Indítson el egy tesztet a szintek fülön!</span>`;
         return;
     }
 
@@ -1067,75 +1111,277 @@ function renderActiveDirectiveBox() {
     if (activeData) {
         target.innerHTML = `
             <div style="color:#00ffff; font-size: 20px;">${activeData.title}</div>
-            <div style="color:#ccc;">${activeData.desc}</div>
-            <div style="color:#ffaa00; font-weight:bold; margin-top:5px;">ÁLLAPOT: ${playerStats.directiveProgress} / ${activeData.goal}</div>
+            <div style="color:#ccc; margin-top: 10px; margin-bottom: 10px;">${activeData.desc}</div>
+            <div style="color:#ffaa00; font-weight:bold; border-top: 1px dashed #005555; padding-top: 10px;">ADATFELDOLGOZÁS: ${playerStats.directiveProgress} / ${activeData.goal}</div>
         `;
     }
 }
 
-// Szerződés kezelő funkciók
+// Szerződés elfogadása
 window.acceptDirective = function(id) {
     if (playerStats.activeDirective) {
-        alert("Már van egy aktív szerződésed! Fejezd be, vagy add fel előbb!");
+        alert("Már van egy aktív protokoll! Fejezd be, vagy szakítsd meg előbb!");
         return;
     }
     playerStats.activeDirective = id;
     playerStats.directiveProgress = 0; 
     if (typeof savePlayerStats === 'function') savePlayerStats();
-    renderDirectivesTab(currentDirTier); // Újrarajzoljuk a listát
+    
+    // JAVÍTÁS: A helyes változónevet használjuk a lista frissítéséhez!
+    renderDirectivesTab(window.omniCurrentDirTier); 
 }
 
-// ==========================================
-// SZERZŐDÉS FELADÁSA (MEGERŐSÍTÉSSEL)
-// ==========================================
-
-// Ezt hívja meg a piros gomb a kártyán
+// Megszakítás (Gomb)
 window.abandonDirective = function() {
     if (playerStats.activeDirective) {
-        // NEM TÖRÖLJÜK AZONNAL! Megnyitjuk a figyelmeztető ablakot!
-        document.getElementById('confirm-abandon-overlay').style.display = 'flex';
+        let overlay = document.getElementById('confirm-abandon-overlay');
+        if (overlay) overlay.style.display = 'flex';
     }
 }
 
-// --- ÚJ GLOBÁLIS FÜGGVÉNYEK A PIROS ABLAK GOMBJAIHOZ ---
-
-// Ha a játékos meggondolta magát (MÉGSE gomb)
+// Visszavonás (Mégse gomb)
 window.cancelAbandon = function() {
     const overlay = document.getElementById('confirm-abandon-overlay');
     if (overlay) overlay.style.display = 'none';
 }
 
-// Ha a játékos BIZTOSAN FELADJA (Piros Gomb)
+// Tényleges Törlés
 window.executeAbandon = function() {
-    // Ablak bezárása
     const overlay = document.getElementById('confirm-abandon-overlay');
     if (overlay) overlay.style.display = 'none';
     
-    // Tényleges törlés a listából
     if (playerStats.activeDirective) {
         playerStats.abandonedDirectives.push(playerStats.activeDirective);
         playerStats.activeDirective = null;
         playerStats.directiveProgress = 0;
         
+        // --- KRONOS BÜNTETÉS AKTIVÁLÁSA ---
+        shopLockedForNextWave = true; 
+        
         if (typeof savePlayerStats === 'function') savePlayerStats();
-        renderDirectivesTab(currentDirTier); // Újrarajzoljuk a listát
+        
+        // JAVÍTÁS: A helyes változónevet használjuk a lista frissítéséhez!
+        renderDirectivesTab(window.omniCurrentDirTier); 
     }
 }
 
-// Végül: A Játékon belüli Terminálban, a "DIREKTÍVÁK" fülön a gombot cseréld le arra, hogy megnyissa ezt az ablakot!
-const tabDirectivesIngameBtn = document.getElementById('tab-directives');
-if (tabDirectivesIngameBtn) {
-    tabDirectivesIngameBtn.addEventListener('click', () => {
-        dirOpenedFrom = 'shopMenu';
-        shopMenu.classList.add('hidden');
-        directivesMenu.classList.remove('hidden');
-        directivesMenu.style.display = 'flex';
+// Terminálon belüli direktíva gomb nyitása
+var omniTabDirIngameBtn = document.getElementById('tab-directives');
+if (omniTabDirIngameBtn) {
+    omniTabDirIngameBtn.addEventListener('click', () => {
+        window.omniDirOpenedFrom = 'shopMenu';
+        if (typeof shopMenu !== 'undefined' && shopMenu) shopMenu.classList.add('hidden');
+        if (omniDirMenu) {
+            omniDirMenu.classList.remove('hidden');
+            omniDirMenu.style.display = 'flex';
+        }
         
         document.querySelectorAll('.dir-tab-btn').forEach(b => b.classList.remove('active'));
-        document.querySelector('.dir-tab-btn[data-tier="info"]').classList.add('active');
-        currentDirTier = 'info';
+        let infoTab = document.querySelector('.dir-tab-btn[data-tier="info"]');
+        if (infoTab) infoTab.classList.add('active');
+        
+        // JAVÍTÁS ITT:
+        window.omniCurrentDirTier = 'info';
         renderDirectivesTab('info');
     });
+}
+
+// ==========================================
+// KÓDEX AUDIO LEJÁTSZÓ RENDSZER
+// ==========================================
+let currentLoreAudio = null;
+
+function stopLoreAudio() {
+    if (currentLoreAudio) {
+        currentLoreAudio.pause();
+        currentLoreAudio.currentTime = 0;
+        currentLoreAudio = null;
+    }
+}
+
+function playLoreAudio(url) {
+    stopLoreAudio(); // Előző hang leállítása
+    if (url && url !== "") {
+        currentLoreAudio = new Audio(url);
+        currentLoreAudio.volume = 0.8; // Hangerő
+        currentLoreAudio.play().catch(e => console.warn("Hang lejátszása blokkolva (Kattints a felületre előbb):", e));
+    }
+}
+
+// AZ ARCHÍVUM BEZÁRÁSA (OKOS GOMB) - Bővítve a hang leállításával!
+// JAVÍTÁS: Átneveztem a változót 'archiveCloseElement'-re, így garantáltan nem dob "already declared" hibát!
+const archiveCloseElement = document.getElementById('close-archive-btn');
+if (archiveCloseElement) {
+    archiveCloseElement.addEventListener('click', () => {
+        
+        stopLoreAudio(); // HA BEZÁRJUK A KÓDEXET, ELHALLGAT A HANG!
+        clearInterval(window.typeInterval); // Írógép effekt leállítása
+
+        if (archiveMenu) {
+            archiveMenu.classList.add('hidden');
+            archiveMenu.style.display = 'none'; 
+        }
+        
+        if (archiveOpenedFrom === 'mainMenu' && mainMenu) {
+            mainMenu.classList.remove('hidden');
+        } else if (archiveOpenedFrom === 'shopMenu' && shopMenu) {
+            shopMenu.classList.remove('hidden');
+        } else if (archiveOpenedFrom === 'pauseMenu') { 
+            document.getElementById('pause-menu').classList.remove('hidden');
+        }
+    });
+}
+
+// --- LISTA GENERÁLÁSA A KATEGÓRIA ALAPJÁN ---
+function renderArchiveList() {
+    archiveList.innerHTML = '';
+    archiveContent.innerHTML = "<div style='text-align:center; color:#005555; margin-top:20px;'>Válasszon ki egy bejegyzést a dekódoláshoz.</div>";
+    
+    stopLoreAudio(); // Ha kategóriát váltasz, hallgasson el az előző!
+
+    let dataArray = OmniCorpDatabase[currentArchiveCategory];
+    
+    if (dataArray) {
+        dataArray.forEach(item => {
+            let isUnlocked = item.checkUnlock ? item.checkUnlock() : true;
+            let statText = item.statInfo ? item.statInfo() : null; 
+            let actualText = typeof item.text === 'function' ? item.text() : item.text;
+            
+            createArchiveButton(item.title, actualText, isUnlocked, item.requirementText, item.image, statText, item.audio);
+        });
+    }
+}
+
+// --- GOMB ÉS OLVASÓ PANEL LÉTREHOZÁSA ---
+function createArchiveButton(title, text, isUnlocked, reqText, imageUrl, statText, audioUrl) {
+    const btn = document.createElement('button');
+    btn.className = 'archive-entry-btn';
+    
+    if (isUnlocked) {
+        btn.innerText = title;
+        btn.onclick = () => {
+            document.querySelectorAll('.archive-entry-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            
+            // Hang elindítása, ha van!
+            if (audioUrl) {
+                playLoreAudio(audioUrl);
+            } else {
+                stopLoreAudio();
+            }
+            
+            let contentHTML = "";
+            
+            if (imageUrl) {
+                contentHTML += `<div style="display: flex; justify-content: center; margin-bottom: 25px;">
+                                   <img src="${imageUrl}" onclick="openLightbox('${imageUrl}')" style="cursor: pointer; max-width: 100%; max-height: 400px; width: auto; border: 2px solid #00ffff; box-shadow: 0 0 20px rgba(0, 255, 255, 0.4); border-radius: 5px; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">
+                                </div>`;
+            }
+
+            if (statText) {
+                contentHTML += `<div style="display: flex; flex-direction: column; justify-content: center; align-items: center; width: 100%; max-width: 250px; min-height: 180px; margin: 0 auto 25px auto; background: rgba(0, 20, 20, 0.6); padding: 15px; border: 1px solid #00ffff; border-radius: 5px; box-shadow: inset 0 0 15px rgba(0,255,255,0.1);">
+                                    ${statText}
+                                </div>`;
+            }
+            
+            contentHTML += `<div id="typing-text"></div>`;
+            archiveContent.innerHTML = contentHTML;
+
+            let typeTarget = document.getElementById('typing-text');
+            let i = 0;
+            clearInterval(window.typeInterval);
+            
+            let typeSpeed = text.length > 500 ? 5 : 15; 
+            
+            window.typeInterval = setInterval(() => {
+                let char = text.charAt(i);
+                // JAVÍTÁS: A sortörések (\n) HTML sortöréssé (<br>) alakítása karakterenként
+                if (char === '\n') {
+                    typeTarget.innerHTML += '<br>';
+                } else {
+                    typeTarget.innerHTML += char;
+                }
+                i++;
+                if (i >= text.length) clearInterval(window.typeInterval);
+            }, typeSpeed); 
+        };
+    } else {
+        btn.classList.add('locked');
+        btn.innerText = "██████ [ZÁROLVA]";
+        btn.onclick = () => {
+            document.querySelectorAll('.archive-entry-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            stopLoreAudio(); 
+            clearInterval(window.typeInterval);
+            
+            archiveContent.innerHTML = `
+                <div style="display: flex; flex-direction: column; justify-content: center; align-items: center; width: 100%; min-height: 350px; text-align: center; white-space: normal;">
+                    <div style="color: #ff0000; font-size: 32px; font-weight: bold; text-shadow: 0 0 15px rgba(255,0,0,0.8); margin-bottom: 20px; letter-spacing: 2px;">
+                        BELÉPÉS MEGTAGADVA
+                    </div>
+                    <div style="color: #ff5555; font-size: 20px; margin-bottom: 30px;">
+                        BIZTONSÁGI SZINT ELÉGTELEN.
+                    </div>
+                    <div style="color: #aaa; font-size: 16px; max-width: 80%; line-height: 1.5; border-top: 1px dashed #550000; padding-top: 20px;">
+                        ${reqText}
+                    </div>
+                </div>
+            `;
+        };
+    }
+    archiveList.appendChild(btn);
+}
+
+// ==========================================
+// SZERZŐDÉS KEZELŐ FÜGGVÉNYEK (JAVÍTVA)
+// ==========================================
+
+// 1. Szerződés elfogadása
+window.acceptDirective = function(id) {
+    if (playerStats.activeDirective) {
+        alert("Már van egy aktív protokoll! Fejezd be, vagy szakítsd meg előbb!");
+        return;
+    }
+    playerStats.activeDirective = id;
+    playerStats.directiveProgress = 0; 
+    
+    // JAVÍTVA: A helyes változót használjuk, így frissül a gomb!
+    renderDirectivesTab(window.omniCurrentDirTier); 
+}
+
+// 2. Megszakítás gomb (Csak megnyitja a piros ablakot)
+window.abandonDirective = function() {
+    if (playerStats.activeDirective) {
+        let overlay = document.getElementById('confirm-abandon-overlay');
+        if (overlay) overlay.style.display = 'flex';
+    }
+}
+
+// 3. Visszavonás (Mégse gomb a piros ablakon)
+window.cancelAbandon = function() {
+    const overlay = document.getElementById('confirm-abandon-overlay');
+    if (overlay) overlay.style.display = 'none';
+}
+
+// 4. Tényleges Feladás (Piros gomb az ablakon)
+window.executeAbandon = function() {
+    const overlay = document.getElementById('confirm-abandon-overlay');
+    if (overlay) overlay.style.display = 'none';
+    
+    if (playerStats.activeDirective) {
+        playerStats.abandonedDirectives.push(playerStats.activeDirective);
+        playerStats.activeDirective = null;
+        playerStats.directiveProgress = 0;
+        
+        // --- ÚJ: KRONOS BÜNTETÉS AKTIVÁLÁSA ---
+        // A következő hullám végén zárva lesz a bolt!
+        if (typeof shopLockedForNextWave !== 'undefined') {
+            shopLockedForNextWave = true; 
+        }
+        
+        // JAVÍTVA: Frissítjük a kártyákat
+        renderDirectivesTab(window.omniCurrentDirTier); 
+    }
 }
 
 // --- ÚJ: FŐMENÜ NEHÉZSÉG VÁLASZTÓ LOGIKA ---
@@ -1221,15 +1467,63 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // --- CSÚSZKÁK (SLIDERS) KEZELÉSE ---
     
-    // 1. Hangerő (Three.js globális hangerő)
-    const volSlider = document.getElementById('volume-slider');
-    const volVal = document.getElementById('vol-val');
-    if (volSlider) {
-        volSlider.addEventListener('input', (e) => {
-            globalVolume = parseFloat(e.target.value);
-            volVal.innerText = Math.round(globalVolume * 100) + '%';
-            if (typeof listener !== 'undefined' && listener) {
-                listener.setMasterVolume(globalVolume);
+// --- KILÉPÉS AZ ASZTALRA (QUIT TO DESKTOP) ---
+    function quitToDesktop() {
+        // Electron.js / Asztali kliens bezárása
+        try { window.close(); } catch(e) {}
+    }
+    
+    const quitMainBtn = document.getElementById('quit-desktop-main-btn');
+    if(quitMainBtn) quitMainBtn.addEventListener('click', quitToDesktop);
+    
+    const quitPauseBtn = document.getElementById('quit-desktop-pause-btn');
+    if(quitPauseBtn) quitPauseBtn.addEventListener('click', quitToDesktop);
+
+
+    // --- TELJES KÉPERNYŐ (FULLSCREEN) ---
+    const fsBtn = document.getElementById('toggle-fullscreen-btn');
+    if (fsBtn) {
+        fsBtn.addEventListener('click', () => {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(err => console.log(err));
+            } else {
+                if (document.exitFullscreen) document.exitFullscreen();
+            }
+        });
+    }
+
+    // --- ZENE ÉS HANGEFFEKTEK KÜLÖNVÁLASZTÁSA ---
+    const musicSlider = document.getElementById('volume-music-slider');
+    const musicVal = document.getElementById('vol-music-val');
+    
+    if (musicSlider) {
+        musicSlider.addEventListener('input', (e) => {
+            musicVolume = parseFloat(e.target.value);
+            musicVal.innerText = Math.round(musicVolume * 100) + '%';
+            
+            // Azonnal frissíti a futó zenéket
+            if (typeof sounds !== 'undefined') {
+                if (sounds['music']) sounds['music'].setVolume(musicVolume);
+                if (sounds['menuMusic']) sounds['menuMusic'].setVolume(musicVolume);
+            }
+        });
+    }
+
+    const sfxSlider = document.getElementById('volume-sfx-slider');
+    const sfxVal = document.getElementById('vol-sfx-val');
+    
+    if (sfxSlider) {
+        sfxSlider.addEventListener('input', (e) => {
+            sfxVolume = parseFloat(e.target.value);
+            sfxVal.innerText = Math.round(sfxVolume * 100) + '%';
+            
+            // Minden más hang, ami NEM zene, megkapja ezt a hangerőt
+            if (typeof sounds !== 'undefined') {
+                for (let key in sounds) {
+                    if (key !== 'music' && key !== 'menuMusic') {
+                        sounds[key].setVolume(sfxVolume);
+                    }
+                }
             }
         });
     }
