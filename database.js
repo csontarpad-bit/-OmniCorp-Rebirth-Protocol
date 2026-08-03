@@ -100,66 +100,77 @@ const OmniCorpDatabase = {
             statInfo: null,
             image: "https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/5fcee7cf3f3f0e88f7fee28af836805a55f9490a/OmniCorp.jpeg",
             audio: "Helyorzo_Hang_URL_1.mp3", // Ide jön az ElevenLabs MP3 linked
-            text: "KRONOS ARCHÍVUM // BIZTONSÁGI SZINT: ALFA\n\nA Terminus Állomás az OmniCorp legtitkosabb, ultra-mély geotermikus bányászati és kutatóállomása. Létrehozásának célja a földkéreg olyan mély rétegeinek kitermelése volt, amelyeket a hagyományos ipar elérhetetlennek hitt. A kilométerekkel a felszín alatt uralkodó extrém körülmények – a gyilkos sugárzás, a toxikus gázok és a megsemmisítő nyomás – lehetetlenné tették az emberi munkaerő alkalmazását.\n\nA Vállalat megoldása a 'Project Rebirth' (ECHO-Protokoll) volt. A bázis alsó szektorában egy masszív, indusztriális klónozó részleget építettek ki. Az ide telepített tartályok futószalagon gyártották a mesterségesen növesztett, érzelemmentesített klónokat (ECHO egységeket). A bányászat zavartalanul folyt... egészen addig, amíg a fúrószárak át nem törtek egy fosszilizálódottnak hitt, ősi kőzetréteget."
+            text: "KRONOS ARCHÍVUM // BIZTONSÁGI SZINT: ALFA // VÁLLALATI ÁTTEKINTÉS\n\nAz OmniCorp a globális ipar csúcsa, amelynek fejlődését nem korlátozza sem etika, sem jogi szabályozás. Legambiciózusabb vállalkozásuk a Terminus Állomás: egy 100 szintből álló, gigantikus földalatti városrendszer, amely egyben a legtitkosabb, ultra-mély geotermikus bányászati és kutatóállomásuk is. Létrehozásának célja a földkéreg olyan mély rétegeinek elérése volt, amelyeket a hagyományos ipar elérhetetlennek hitt. A bázis feladata kettős: a kimeríthetetlen energiát biztosító extrém geotermikus hőforrások kiaknázása, valamint a csak ezen a hihetetlen nyomáson formálódó ritkaföldfémek és ásványi kristályok kitermelése.\n\nA komplexum egy önfenntartó ipari csoda. Nem csupán bányászati aknákból áll, hanem laboratóriumok, logisztikai hálózatok és feldolgozó üzemek teljes városnyi méretű hálózata. A kilométerekkel a felszín alatt uralkodó extrém körülmények – a pokoli hőmérséklet, a gyilkos sugárzás, a toxikus gázok és a megsemmisítő nyomás – azonban lehetetlenné tették az emberi munkaerő alkalmazását.\n\nA Vállalat megoldása a 'Project Rebirth' (ECHO-Protokoll) volt. A bázis alsó szektorában egy masszív, indusztriális klónozó részleget építettek ki. Az ide telepített tartályok futószalagon gyártották a mesterségesen növesztett, érzelemmentesített klónokat (ECHO egységeket), hogy elvégezzék a halálos munkát. A bányászat és az energiatermelés zavartalanul folyt... egészen addig, amíg a fúrószárak át nem törtek egy fosszilizálódottnak hitt, ősi kőzetréteget."
         },
         {
-            id: "lore_verdant",
-            title: "02. A VERDANT ÉBREDÉSE",
+            id: "lore_discovery",
+            title: "02. A VERDANT SPÓRA FELFEDEZÉSE",
             unlocked: true,
-            checkUnlock: () => true, // MINDIG NYITVA
+            checkUnlock: () => true, 
             requirementText: "Alapértelmezett hozzáférés.",
-            audio: "Helyorzo_Hang_URL_1.mp3", // Ide jön az ElevenLabs MP3 linked
-            statInfo: () => `<div style="text-align:center;">INCIDENS JELENTÉS: NULLADIK NAP</div>`,
-            image: "https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/6ff41de37442c16e94662d821116944b11451530/lore_incident.jpeg",
-            text: "A Cég a Verdant spórában a tökéletes ipari csodaszert látta. Egyszerre használták villámgyors 'hús-ragasztóként' a bányász-klónok sérüléseinek összezárására, nyers idegi stimulánsként a termelés felpörgetésére, és biológiai lebontóként. A halott vagy selejtes klónokat egyszerűen a legalsó szektorba dobták, hogy a gomba nyomtalanul feleméssze a biológiai hulladékot.\n\nAmivel az elemzők nem számoltak, hogy a gomba a lebontás során asszimilálta a klónok idegrendszeri sejtjeit. Minden egyes rothadó testtel egyre intelligensebbé vált. A sötétben, a selejtes testekből lassan felépült egy decentralizált agy: a Kaptártudat (Nexus).\n\nA Nulladik Nap nem egy fertőzés kitörése volt, hanem a Kaptár öntudatra ébredésének pillanata. Mivel a bázison dolgozó összes klón vérében ott keringett a spóra a korábbi orvosi 'kezelésekből', a Nexusnak csak egyetlen jelbe került átvenni az irányítást az idegrendszerük felett. A mutánsok nem a semmiből jöttek létre: a hálózat egyszerűen halálos szintre túlhajtotta a klónokba épített specifikus implantátumokat és fegyverzetet, létrehozva a tökéletes védelmező sereget."
+            statInfo: null,
+            image: "https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/e3864cda4febf844f96e82b48b3319f699096caf/lore%20spore.jpeg",
+            audio: "Helyorzo_Hang_URL_3.mp3", 
+            text: "KRONOS ARCHÍVUM // KUTATÁSI JELENTÉS\n\nA legalsó rétegekben a fúrók egy ismeretlen, gomba-alapú organizmust fordítottak ki a kőzetből. Az OmniCorp elemzői a spórában (Kódnév: Verdant) az ipari csodaszert látták meg.\n\nKezdetben villámgyors 'hús-ragasztóként' használták a bányász-klónok sérüléseinek összezárására, valamint nyers idegi stimulánsként a termelés felpörgetésére. Később a biológiai hulladék lebontására is bevetették: a Verdant nem csupán felemésztette a selejtes klóntesteket, hanem a folyamat során egy rendkívül hasznos, szintetikus bio-alapanyagot állított elő. Ezt a Vállalat visszatermelte a legfelső szinten működő klónozó üzembe, megalkotva a tökéletes, zárt láncú újrahasznosítást.\n\nAmivel az elemzők nem számoltak, hogy a gomba a lebontás során asszimilálta a klónok idegrendszeri sejtjeit. Minden feldolgozott testtel egyre intelligensebbé vált. A sötétben lassan felépült egy decentralizált agy: a Kaptártudat (A Nexus)."
+        },
+        {
+            id: "lore_recovery_unit",
+            title: "03. BIO HARDVER",
+            unlocked: true,
+            checkUnlock: () => true, 
+            requirementText: "Alapértelmezett hozzáférés.",
+            statInfo: null,
+            image: "https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/6ff41de37442c16e94662d821116944b11451530/lore_recovery_unit.jpeg",
+            audio: "Helyorzo_Hang_URL_2.mp3", 
+            text: "KRONOS ARCHÍVUM // BIOLÓGIAI HARDVER RÉSZLEG\n\nAz etikai akadályokat a Vállalat egy jogi kiskapuval kerülte meg. A legfelső szinteken kialakított indusztriális klónozó részleg laborban növesztett testeket állított elő, amelyeket hivatalosan nem emberként, hanem 'Biológiai Hardverként' tartottak nyilván. Ezek voltak az ECHO egységek.\n\nA hagyományos bányász-klónok üres vázak voltak, minimális agyi funkciókkal, csak a gépek kezelésére kondicionálva. A hatékonyság és a fizikai teherbírás maximalizálása érdekében a testeket már a gyártósoron extrém ipari implantátumokkal – gerinc-gyorsítókkal és csontsűrítő anyagokkal – látták el. Mivel a mélyszinti munka során a sérülési és halálozási ráta 98%-os volt, a halott vagy selejtes klónokat egyszerűen az alsóbb szektorok gödreibe dobták, mint biológiai hulladékot."
         },
         {
             id: "lore_incident",
-            title: "03. A NULLADIK NAP (AZ INCIDENS)",
+            title: "04. A NULLADIK NAP",
             unlocked: true,
             checkUnlock: () => true, // MINDIG NYITVA
             requirementText: "Alapértelmezett hozzáférés.",
             statInfo: null,
-            image: "https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/6ff41de37442c16e94662d821116944b11451530/lore_incident.jpeg",
+            image: "https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/7beb3d00c6c458083a4b37636d1949d8c2d03c3e/nulladik%20nap.jpeg",
             audio: "Helyorzo_Hang_URL_3.mp3",
             text: "KRONOS INCIDENS JELENTÉS // BIZTONSÁGI SZINT: OMEGA\n\nA katasztrófa csendes volt és azonnali. A hálózat a mélyben elérte a kritikus tömeget, és a Nexus öntudatra ébredt. A spóra áttörte a karantént. Mivel a klónok teste már telítve volt a szintetizált 'gyógyszerrel', a Kaptár egyetlen pillanat alatt átvette az uralmat minden ECHO egység és a megfertőzött emberi személyzet idegrendszere felett.\n\nA bázis kommunikációs csatornái azonnal elnémultak. A mutációk perceken belül torzították el a gazdatesteket. A Terminus Állomás több ezer dolgozója és klónja egyetlen összehangolt, kegyetlen mészárlás áldozata lett. A KRONOS AI a fertőzés észlelésekor azonnal lezárta a szektorokat, hermetikusan elzárva a bázist a külvilágtól. Mindenki csapdába esett."
         },
-        {
-            id: "lore_gallagher",
-            title: "04. GALLAGHER REDFIELD",
+      {
+            id: "lore_structure",
+            title: "05. IZOLÁCIÓS BIZTONSÁGI PROTOKOLLOK",
             unlocked: true,
-            checkUnlock: () => true, // MINDIG NYITVA
+            checkUnlock: () => true, 
             requirementText: "Alapértelmezett hozzáférés.",
-            statInfo: () => `<div style="text-align:center;">STÁTUSZ: EGYETLEN ÉLŐ SZEMÉLYZET<br>ID: GR-117</div>`,
-            image: "https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/6ff41de37442c16e94662d821116944b11451530/lore_gallagher.jpeg",
-            audio: "Helyorzo_Hang_URL_4.mp3",
-            text: "Gallagher Redfield nem kutatóorvos volt, csupán a Terminus Állomás biztonsági és biometrikus főnöke. Kemény, gyakorlatias ember. A Nulladik Napon, amikor a Kaptár átvette az irányítást, ő volt az egyetlen, aki átlátta a helyzetet. Az utolsó pillanatban, mielőtt a gomba mindent elnyelt volna, magára zárta a Központi Irányító Terem páncélajtaját.\n\nSaját DNS-ével és biometrikus kulcsával a távolból feltörte a KRONOS klónozó protokollját, és átvette az irányítást a felső szinten lévő Klónozó-tartályok felett. A terve kétségbeesett: a vezérlőből ébresztett fel téged, abban a reményben, hogy elég erős leszel és eljutsu a Maghoz hogy elpusztítsd a Nexust. Gallagher egyedül van a sötétben, de az irányítóterem szellőzőrendszere lassan megadja magát a spóráknak. Az idő fogy."
+            statInfo: null,
+            image: "https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/a5852dbcc94e37038a7e159bcfb79c703141bcd7/ORC.jpeg",
+            audio: "Helyorzo_Hang_URL_5.mp3", 
+            text: "KRONOS RENDSZERMAG // BIZTONSÁGI ALAPPROGRAM\n\nA fertőzés észlelésekor a KRONOS AI hermetikusan lezárta az állomást. A komplexum három szektorra (Alpha, Béta, Omega) oszlik, amelyeket masszív biztonsági zsilipek választanak el. Minden szektor alján egy KRONOS Szerverterem található. A zsilipeket csak az itt tárolt fizikai kulcsokkal lehet feloldani.\n\nA szinteket összekötő egyetlen funkcionáló logisztikai útvonal a központi Teherlift. A lift áthalad a Kutató és Fejlesztő (R&D) szinteken, amelyek elszigetelt laborokként működnek a káoszban.\n\nGALLAGHER MEGJEGYZÉSE: \"Figyelj rám! Jelenleg a legfelső szinten, a klónozó részlegben vagy. Onnan kell lejutnod a Maghoz. A KRONOS szándékosan vágta el az útvonalakat. A személyi liftek tönkrementek, a lépcsőházakban pedig több tízezer mutáns van. Ha kinyitod a vészkijáratot, másodpercek alatt elárasztanak és élve széttépnek.\n\nCsak a nagy teherszállító lift maradt. Ereszkedés közben az aknából rá fognak ugrani a platformra! Két hullám között a lift falán lévő mini-nyomtatóból tudsz alapszintű lőszert szerezni. De a komoly fegyverekhez (Sörétes, Modifikációk) ki kell bírnod, amíg a lift megáll a KRONOS vakfoltjain: az R&D Laborokban. Lépj be a liftbe, juss el a szerverteremig, öld meg a védelmezőjét, vedd el a kulcsot, és nyisd ki a következő zsilipet!\""
         },
         {
-            id: "lore_recovery_unit",
-            title: "05. RECOVERY UNIT",
+            id: "lore_gallagher",
+            title: "06. GALLAGHER REDFIELD",
             unlocked: true,
             checkUnlock: () => true, // MINDIG NYITVA
             requirementText: "Alapértelmezett hozzáférés.",
-            statInfo: () => `<div style="text-align:center;">STÁTUSZ: BIOLÓGIAI HARDVER</div>`,
-            image: "https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/6ff41de37442c16e94662d821116944b11451530/lore_recovery_unit.jpeg",
-            audio: "Helyorzo_Hang_URL_5.mp3",
-            text: "KRONOS ARCHÍVUM // PROJECT ECHO\n\nAz ECHO-protokoll az OmniCorp megoldása volt a Terminus Állomás extrém mélységében uralkodó halálos munkakörülményekre. A klónozás etikai akadályait a Vállalat egy jogi kiskapuval kerülte meg: a laborban növesztett testeket hivatalosan nem emberként, hanem 'Biológiai Hardverként' (Synthetic Assets) tartják nyilván, emberi jogok és személyazonosság nélkül.\n\nA hagyományos bányász-klónok csupán üres vázak voltak, minimális agyi funkciókkal a fúrógépek kezeléséhez."
+            statInfo: null,
+            image: "https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/6ff41de37442c16e94662d821116944b11451530/lore_gallagher.jpeg",
+            audio: "Helyorzo_Hang_URL_4.mp3",
+            text: "Gallagher Redfield nem kutatóorvos volt, csupán a Terminus Állomás biztonsági és biometrikus főnöke. Kemény, gyakorlatias ember. A Nulladik Napon, amikor a Kaptár átvette az irányítást, ő volt az egyetlen, aki átlátta a helyzetet. Az utolsó pillanatban, mielőtt a gomba mindent elnyelt volna, magára zárta a Központi Irányító Terem páncélajtaját.\n\nSaját DNS-ével és biometrikus kulcsával a távolból feltörte a KRONOS klónozó protokollját, és átvette az irányítást a felső szinten lévő Klónozó-tartályok felett. A terve kétségbeesett: a vezérlőből ébresztett fel téged, abban a reményben, hogy elég erős leszel és eljutsz a Maghoz hogy elpusztítsd a Nexust. Gallagher egyedül van a sötétben, de az irányítóterem szellőzőrendszere lassan megadja magát a spóráknak. Az idő fogy."
         },
         {
             id: "lore_echo",
-            title: "06. ECHO-001 (A PROTOTÍPUS)",
+            title: "07. ECHO-001",
             unlocked: true,
             checkUnlock: () => true,
             requirementText: "Alapértelmezett hozzáférés.",
-            statInfo: () => `<div style="text-align:center;">STÁTUSZ: ILLEGÁLIS ANOMÁLIA<br>SORSZÁM: ECHO-001</div>`,
+            statInfo: null,
             image: "https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/6ff41de37442c16e94662d821116944b11451530/lore_echo.jpeg",
             audio: "Helyorzo_Hang_URL_5.mp3",
             text: "KRONOS ARCHÍVUM // PROJECT ECHO\n\nKRONOS ELEMZÉS: FIGYELMEZTETÉS! Illetéktelen biológiai anomália a klónozó szektorban. A Szintetikus Hardver protokoll megsértve. Az alany (ECHO-001) agykérgi aktivitása 870%-kal meghaladja a gyári korlátot. Illegális neurális-térkép szinkronizáció... [HIBA]... Részleges adatvesztés. Spontán szinapszis-újrahuzalozás észlelve.\n\nGALLAGHER MEGJEGYZÉSE: \"Hetvenkét nap, ECHO. Hetvenkét napig küzdöttem a KRONOS tűzfalaival, miközben a gomba a laborom falait kaparta. A standard bányász-klónok üresek, esélyük sem lenne. Megpróbáltam egy egy-az-egyben neurális lenyomatot csinálni a saját agyamról, és beletölteni a tiédbe... de a technológia nem erre való. Az inkubáció túl gyors volt, a sávszélesség pedig kevés.\n\nA másolás közben a rendszered összeomlott, az agyad pedig kétségbeesetten kezdte véletlenszerűen összekötni a leszakadt idegpályákat, hogy túléljen. Átment az izommemóriám, a fegyverkezelésem, talán egy-két homályos emlék... de a hézagokat te magad töltötted ki. A káoszból egy teljesen új elme született. Sok mindenben hasonlítunk, de nem a klónom vagy. Kicsit olyan, mintha a saját testvéremet hoztam volna létre a sötétben. Sajnálom, hogy ebbe a pokolba születtél, ECHO. De szükségem van rád.\""
         },
         {
             id: "lore_kronos",
-            title: "07. KRONOS AI",
+            title: "08. KRONOS AI",
             unlocked: true,
             checkUnlock: () => true, // MINDIG NYITVA
             requirementText: "Alapértelmezett hozzáférés.",
@@ -168,41 +179,64 @@ const OmniCorpDatabase = {
             audio: "Helyorzo_Hang_URL_5.mp3",
             text: "KRONOS RENDSZERMAG // BELSŐ MONOLÓG\n\nAz OmniCorp központi intelligenciája nem ismeri a félelmet, sem az irgalmat. A KRONOS számára a bázis pusztulása és a dolgozók halála pusztán egy 'Kritikus Biológiai Incidens'. Alapprogramjába kőkeményen beleégették: Vállalati veszélyhelyzet esetén a lezárás feloldása szigorúan tilos, amíg maximális mennyiségű harci telemetria nem gyűlik össze a fenyegetésről.\n\nA KRONOS vakon követi a protokollt. Nem érdekli Gallagher szenvedése, sem az ECHO klónok ezreinek brutális halála. Ő csak az adatokat akarja. Kinetikus becsapódások, sav-tesztek, koponya-átütési statisztikák. Gallagher nap mint nap küzd a géppel, próbálja meghekkelni az irreális kvótákat, hogy az AI kinyissa a következő zsilipet a klónoknak. Egy gép bürokráciája a világvége közepén."
         }
+
     ],
 
     logs: [
-{
+        {
             id: "log_01",
-            title: "RÁDIÓADÁS: 01 - A GÉP LOGIKÁJA",
+            title: "RÁDIÓADÁS: 01 - ÉBREDÉS",
             unlocked: true,
             checkUnlock: () => true,
             requirementText: "Alapértelmezett.",
             statInfo: null,
-            image: null,
-            audio: "audio_log_1.mp3", // Ide jön majd az MP3
-            text: "GALLAGHER: \"ECHO, hallasz? A KRONOS lezárta az állomást. A gép nem gonosz, és nem hazudik... egyszerűen csak egy algoritmus. Az alapprogramjába égették, hogy biológiai veszély esetén a maximális harci telemetriát kell kinyernie a fenyegetésről. Kinetikus becsapódások, találati arányok, mutációs tűréshatár.\n\nNeki te és a szörnyek csak változók vagytok egy egyenletben. Ameddig ölöd a mutánsokat és küldöd neki a harci adatokat (CR), hajlandó megnyitni neked a Vállalati Ipari Nyomtatót (a Terminált), hogy fegyvert és Gen-Stabot biztosítson. De ha nem termelsz adatot, egyszerűen leír téged veszteségként, és megvonja az utánpótlást. Szó szerint meg kell vásárolnod a saját túlélésedet a géptől. Játssz a szabályai szerint, amíg le nem érsz hozzám!\""
+            image: "https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/6ff41de37442c16e94662d821116944b11451530/lore_recovery_unit.jpeg",
+            audio: "audio_log_1.mp3", 
+            text: "[ A KLÓNOZÓ RÉSZLEG HANGSZÓRÓIN KERESZTÜL ]\n\nGALLAGHER: \"Kinyitottad a szemed. Nyugodj meg, a szédülés és a dezorientáció normális a gyorsított inkubáció után. A nevem Gallagher Redfield, a Terminus állomás Különleges Műveleti parancsnoka. Ne próbálj válaszolni, a tartályodnál nincs mikrofon.\n\nFigyelj rám nagyon figyelmesen! Egy biológiai katasztrófa történt. Valami kiszabadult a legalsó szektorokból, és a KRONOS központi AI rendszerünk meg lezárta a teljes bázist. Te vagy az utolsó esélyünk. Az egyetlen tiszta, megfertőzetlen ember ebben a pokolban. Nem emlékszel semmire, de a tested biztos tudja, mit kell tennie. A folyosó végén a halott őröknél találsz egy pisztolyt. Szedd fel, vedd magadhoz a lőszerüket, és menj a Központi Teherlifthez! Fentről figyellek a kamerákon.\""
         },
         {
             id: "log_02",
-            title: "RÁDIÓADÁS: 02 - FERTŐZÉS",
-            unlocked: false,
-            checkUnlock: () => (typeof currentWave !== 'undefined' && currentWave >= 50) || playerStats.wavesSurvived >= 50,
-            requirementText: "KÖVETELMÉNY: Érje el az 50. Hullámot.",
+            title: "RÁDIÓADÁS: 02 - A REPLIKÁTOR",
+            unlocked: true,
+            checkUnlock: () => true, 
+            requirementText: "Alapértelmezett.",
             statInfo: null,
             image: null,
             audio: "audio_log_2.mp3",
-            text: "GALLAGHER: \"*Súlyos köhögés*... ECHO... A vezérlőterem szellőzője megadta magát. A spóra bejutott. Már érzem a tüdőmben. Olyan, mintha apró tűk ezrei mozognának a bőröm alatt. Próbálom tartani magam, de a hálózat... a Nexus... már hallom a hangját a fejemben. Siess. Nem tudom, meddig tudom még visszatartani a KRONOS biztonsági protokolljait. Ne hagyd, hogy a gomba élve kapjon el!\""
+            text: "[ A LIFT BEÉPÍTETT HÍRADÓJÁN KERESZTÜL ]\n\nGALLAGHER: \"Jó, rajta vagy a platformon. Látod a falba épített terminált? Az egy szabványos OmniCorp Replikátor. Minden teherbíró lifthez telepítettek egyet az ipari protokoll miatt, hogy a személyzet gyors vészhelyzeti javításokat és alapellátást tudjon nyomtatni menet közben.\n\nA KRONOS azonban zárolta a rendszert. Csak akkor engedélyezi a nyomtatást, ha harci telemetriát adsz neki. Öld a dögöket, gyűjtsd az adatot, és a gép ad érte cserébe lőszert meg orvosi ellátmányt. A komoly fegyverekhez azonban az R&D laborok nagy teljesítményű nyomtatói kellenek. Ahogy a lift megkezdi a süllyedést, a zaj odavonzza a lényeket. Az aknák falairól egyenesen a platformra fognak ugrani. Éld túl a leereszkedést az első laborig!\""
         },
         {
             id: "log_03",
-            title: "RÁDIÓADÁS: 03 - A 99. SZEKTOR (VÉGSŐ HÍVÁS)",
+            title: "RÁDIÓADÁS: 03 - AZ ELSŐ LABOR (A KÁR)",
             unlocked: false,
-            checkUnlock: () => (typeof currentWave !== 'undefined' && currentWave >= 99) || playerStats.wavesSurvived >= 99,
-            requirementText: "KÖVETELMÉNY: Érje el a 99. Hullámot.",
+            checkUnlock: () => (typeof currentWave !== 'undefined' && currentWave >= 15) || playerStats.wavesSurvived >= 15,
+            requirementText: "KÖVETELMÉNY: Érje el az Első R&D Labort.",
             statInfo: null,
             image: null,
             audio: "audio_log_3.mp3",
-            text: "GALLAGHER: \"*Torz, idegen és emberi hang keveredése*... E-ECHO... Itt vagyok... a 99. szektorban. Az Irányítóban. A gépnek igaza volt... a statisztika győzött. Én... én már a Hálózat része vagyok. Látlak a kamerákon... Látom magunkat. Ne habozz! Amikor kinyílik a páncélajtó... lőjj! Lőjj a fejemre! Vedd el a kulcskártyámat... és pusztítsd el a Magot! VÉGEZD BE!\""
+            text: "[ A LABOR KOMMUNIKÁCIÓS PULTJÁN KERESZTÜL - KÉTIRÁNYÚ ]\n\nGALLAGHER: \"Végre hallom a hangod... Látom az arcodat a monitoron. Borzasztóan furcsa a saját arcomat látni és a saját hangomat hallani egy másik testből. Igen... te egy klón vagy. Sajnálom, hogy így kellett megtudnod. Az én dolgom lett volna megvédeni az állomást. Megvédeni Sarah-t. Ő a Béta szektorban dolgozott. A kamerákon keresztül kellett végignéznem, ahogy a gomba elnyeli az egész labort, mert a KRONOS azonnal lezárt minden ajtót.\n\nEz a kudarcom örökké velem marad... A lift nemsokára megáll az Alpha Szerverteremben. Ott vár rád a gép első védelmi vonala. Törd fel a rendszert, és vedd ki a szerverből a fizikai kulcsot. Azzal ki tudod nyitni a zsilipet. De vigyázz, ott szokatlanul erős az ellenséges aktivitás. Addig is, vásárolj be ezen a terminálon, mert a következő szakaszon már elszabadult a pokol.\""
+        },
+        {
+            id: "log_04",
+            title: "RÁDIÓADÁS: 04 - A BIOMASSZA ÉS A DRÓNOK",
+            unlocked: false,
+            checkUnlock: () => (typeof currentWave !== 'undefined' && currentWave >= 40) || playerStats.wavesSurvived >= 40,
+            requirementText: "KÖVETELMÉNY: Érjen el a Béta Szektorba.",
+            statInfo: null,
+            image: null,
+            audio: "audio_log_4.mp3",
+            text: "[ A LIFT BEÉPÍTETT HÍRADÓJÁN KERESZTÜL ]\n\nGALLAGHER: \"Ideje megismerned, mivel is állsz szemben odalent. A Kaptár fázisokban terjeszkedik. A friss, zöld nyálka a padlón egyfajta biológiai pajzsot ad a mutánsoknak, tompítja a fegyvereid erejét. Amellett, hogy szétmar téged, ha rálépsz. Amikor a tócsa sárgává rohad, azt kerüld el, mert csak még veszélyesebb.\n\nEz a sárga massza egyben tápanyag is. Olyan förmedvényeket vonz oda, amik emberi fejekből és pókszerű végtagokból olvadtak össze. Undorító, tudom. De ezek a dögök érintetlen neuro-szövetet szállítanak lefelé a Magba. Ha szétlövöd őket, a KRONOS nagyban megjutalmaz. Vadászd le őket!\""
+        },
+        {
+            id: "log_05",
+            title: "RÁDIÓADÁS: 05 - AZ IDŐ LEJÁRT",
+            unlocked: false,
+            checkUnlock: () => (typeof currentWave !== 'undefined' && currentWave >= 80) || playerStats.wavesSurvived >= 80,
+            requirementText: "KÖVETELMÉNY: Érje el az Omega Szektort (Vörös Zóna).",
+            statInfo: null,
+            image: null,
+            audio: "audio_log_5.mp3",
+            text: "[ A LABOR KOMMUNIKÁCIÓS PULTJÁN KERESZTÜL ]\n\nGALLAGHER: \"*Súlyos, nedves köhögés*... Hallgass rám. A padló a te szinteden már valószínűleg vörösen lüktet. Ha azok a hólyagok megduzzadnak, egy mutáns csapda kel ki belőlük. Lődd ki őket távolról, különben a gázuk elvakít.\n\nÉn... már az Irányítóban vagyok, a Mag felett. De a szellőző megadta magát. A spóra bejutott. Már érzem a tüdőmben. Olyan, mintha apró tűk ezrei mozognának a bőröm alatt. Próbálom tartani magam, de a hálózat... a Nexus... már hallom a hangját a fejemben. Nemsokára találkozunk az ajtóm előtt. Ha már nem én lennék az, aki kinyitja neked... ne habozz. Ne állj meg a Magig!\""
         },
         {
             id: "log_end",
@@ -211,9 +245,9 @@ const OmniCorpDatabase = {
             checkUnlock: () => (typeof currentWave !== 'undefined' && currentWave >= 100) || playerStats.wavesSurvived >= 100,
             requirementText: "KÖVETELMÉNY: Pusztítsa el a Nexust (100. Hullám).",
             statInfo: () => `<div style="text-align:center; color:#ff0000; font-weight:bold;">INCIDENS LEZÁRVA<br>VESZTESÉG: 100%</div>`,
-            image: "https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/25d9afc7ab2489c689298e9c7aee89b8c8d45fee/OmniCorp.jpeg", // Ide lehet egy robbanás kép
+            image: "https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/25d9afc7ab2489c689298e9c7aee89b8c8d45fee/OmniCorp.jpeg", 
             audio: "audio_log_end.mp3",
-            text: "KRONOS RENDSZERMAG: ALFA-CÉLPONT (NEXUS) MEGSEMMISÍTVE. BIOMASSZA SZINT CSÖKKEN.\n\nECHO-001. A telemetriai adatok gyűjtése befejeződött. Az OmniCorp megkapta a kért fájlokat. A biológiai fenyegetés hálózata összeomlott.\n\nSzenzorok elemzése: ECHO-001 biológiai hardver. A szervezet 94%-a Verdant spórával fertőzött. A klónozó laborok megsemmisültek. Szintetikus alany megmentése: Nem indokolt.\n\nECHO, megtetted, amire Gallagher programozott. Megölted a teremtődet, és elpusztítottad a Magot. De te is tudod, mi következik. Ha felmész a felszínre, a Kaptár a te véredben születik újjá. Gallagher utolsó ajándéka a túlterhelési kód volt. A visszaszámlálás elindult. A Terminus Állomás másodperceken belül hamuvá ég, vele együtt a gomba, a telemetria, én... és te is.\n\nKRONOS Rendszer leállítása... Köszönjük, hogy az OmniCorp-ot választotta."
+            text: "KRONOS RENDSZERMAG: ALFA-CÉLPONT MEGSEMMISÍTVE. BIOMASSZA SZINT CSÖKKEN.\n\nECHO-001. A telemetriai adatok gyűjtése befejeződött. Az OmniCorp megkapta a kért fájlokat. A biológiai fenyegetés hálózata összeomlott.\n\nSzenzorok elemzése: ECHO-001 biológiai hardver. A szervezet 94%-a Verdant spórával fertőzött. A klónozó laborok megsemmisültek. Szintetikus alany megmentése: Nem indokolt.\n\nMegtetted, amire Gallagher programozott. Elpusztítottad a Magot. De te is tudod, mi következik. Ha felmész a felszínre, a Kaptár a te véredben születik újjá. Gallagher utolsó ajándéka a túlterhelési kód volt, amelyet a kulcsával együtt hagyott hátra. A visszaszámlálás elindult. A Terminus Állomás másodperceken belül hamuvá ég, vele együtt a gomba, a telemetria, én... és te is.\n\nKRONOS Rendszer leállítása... Köszönjük, hogy az OmniCorp-ot választotta."
         }
     ],
 
