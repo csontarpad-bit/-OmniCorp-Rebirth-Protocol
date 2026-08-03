@@ -181,6 +181,7 @@ function loadSound(name, url, volume = 1.0, isLoop = false) {
       
     });
 }
+loadSound('loadingMusic', 'https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/fea9f5d83283e004ddc56527e42e8d665ef93bc0/Loading%20Screen%20music.mp3', 0.5, true);
 loadSound('cryoGas', 'https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/5abe88d4b8b1dd33f0887daa25511297b89eecbd/cryo%20gas.mp3', 0.8);
 loadSound('iceCrack', 'https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/46c22b763dcc098c3c6581afdfbccad22203c429/ice%20brake.mp3', 0.5); // Halkabbra vesszük, ez csak háttérzaj
 loadSound('footstep', 'https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/dd55e7027743a8ed1ec9aa2c9bd70895c3605773/foot%20%20step.mp3', 0.8);
@@ -878,24 +879,28 @@ window.addEventListener('keydown', (e) => {
         if (wpn.ammo < wpn.maxAmmo && wpn.reserve > 0) startReloading(wpn);
     }
 
-    // --- ÚJ: MEDKIT HASZNÁLATA ("H" GOMB) ---
+// --- ÚJ: MEDKIT HASZNÁLATA ("H" GOMB) ---
     if (key === 'h' && gameState === 'PLAYING') {
         let maxHP = 100 + (skills.maxHealth.level * 20);
-        // Csak akkor használhatja, ha van a táskájában ÉS sérült!
         if (playerMedkits > 0 && playerHealth < maxHP) {
-            playerMedkits--; // Kivesz egyet a táskából
-            
-            // Kiszámoljuk a gyógyulás mértékét (A Nanobot képesség ezt is növeli!)
+            playerMedkits--; 
             let healAmount = 40 * (1 + (skills.healthLoot.level * 0.2));
             playerHealth = Math.min(maxHP, playerHealth + healAmount); 
+            
+            // FERTŐZÉS + DROG EFFEKT (MINDEN HASZNÁLATKOR!)
+            playerInfection = Math.min(100, playerInfection + 5); 
+            druggedTimer = 1.5; 
+            document.body.classList.add('drugged');
             
             playSound('heal'); 
             const healFlash = document.getElementById('heal-flash');
             if (healFlash) { healFlash.style.opacity = 1; setTimeout(() => healFlash.style.opacity = 0, 300); }
-            if (typeof updateUI === 'function') updateUI();
+            
+            if (typeof updateUI === 'function') updateUI(); // AZONNALI FRISSÍTÉS
         }
     }
 });
+
 
 window.addEventListener('keyup', (e) => { let key = e.key.toLowerCase(); if (key in keys) keys[key] = false; });
 
@@ -1437,16 +1442,92 @@ function animate() {
                         invincibilityTimer = 2.0;
                         playSound('heal');
                         if (typeof updateShopButtons === 'function') updateShopButtons();
-                    } else {
+                   } else {
+                        playSound('deathScream');
                         gameState = 'GAMEOVER'; 
                         document.exitPointerLock(); 
-                        document.getElementById('final-score').innerText = `PÉNZ: ${score}`; 
-                        document.getElementById('final-wave').innerText = `TÚLÉLT HULLÁMOK: ${currentWave}`; 
+                        
+                        document.getElementById('final-score').innerText = `ADAT: ${score} CR`; 
+                        document.getElementById('final-wave').innerText = `TÚLÉLT ITERÁCIÓ: ${currentWave}`; 
+                        
+                        // --- ÚJ: TISZTA LAP (MENTÉS TÖRLÉSE) ---
+                        if (typeof localStorage !== 'undefined') {
+                            localStorage.removeItem('OmniCorpStats');
+                        }
+                        // Memória nullázása is
+                        if (typeof playerStats !== 'undefined') {
+                            playerStats.plantsDestroyed = 0;
+                            playerStats.wavesSurvived = 0;
+                            playerStats.totalDataGathered = 0;
+                            playerStats.skillsBought = 0;
+                            playerStats.activeDirective = null;
+                            playerStats.directiveProgress = 0;
+                            playerStats.completedDirectives = [];
+                            playerStats.abandonedDirectives = [];
+                            // Zombi statisztikák nullázása
+                            for (let key in playerStats.kills) {
+                                playerStats.kills[key] = { body: 0, head: 0 };
+                            }
+                            // Fegyverek nullázása
+                            for (let wKey in weapons) {
+                                if (wKey !== 'pistol') weapons[wKey].owned = false;
+                                weapons[wKey].level = 1;
+                            }
+                            // Skillek nullázása
+                            for (let sKey in skills) {
+                                skills[sKey].level = 0;
+                            }
+                        }
+                        
                         document.getElementById('game-over').classList.remove('hidden');
                     }
                 }
             }
         } // Tick vége
+
+
+// --- ÚJ: FERTŐZÉS (NEXUS SYNC) LOGIKA ---
+    if (playerInfection > 0) {
+        
+        // 1. Állandó vizuális filter beállítása
+        document.body.classList.remove('infected-mild', 'infected-medium', 'infected-severe');
+        if (playerInfection > 75) document.body.classList.add('infected-severe');
+        else if (playerInfection > 50) document.body.classList.add('infected-medium');
+        else if (playerInfection > 25) document.body.classList.add('infected-mild');
+
+        // 2. Véletlenszerű Ideg-rángások (Glitch Spasms)
+        // Minél magasabb a fertőzés, annál gyakrabban rángatózik a kamera
+        if (playerInfection >= 30 && druggedTimer <= 0) {
+            infectionSpasmTimer -= delta;
+            
+            if (infectionSpasmTimer <= 0) {
+                // Rángás aktiválása!
+                playSound('glitch'); 
+                cameraShake = 0.3 * (playerInfection / 100); // Rángás erőssége a fertőzéstől függ
+                
+                const glitchOverlay = document.getElementById('glitch-overlay');
+                if (glitchOverlay) {
+                    glitchOverlay.classList.remove('hidden');
+                    glitchOverlay.classList.add('glitch-active');
+                    setTimeout(() => {
+                        glitchOverlay.classList.remove('glitch-active');
+                        glitchOverlay.classList.add('hidden');
+                    }, 200 + Math.random() * 300); // 0.2 - 0.5 mp-ig tartó glitch
+                }
+
+                // Következő rángás kiszámolása (Ha 100% a fertőzés, 2-5 mp-enként jön!)
+                let spasmFrequency = 15 - (playerInfection / 10); // 30%-nál ~12 mp, 100%-nál ~5 mp
+                infectionSpasmTimer = spasmFrequency + (Math.random() * 5); 
+            }
+        }
+        
+        // Opcionális: Ha eléri a 100%-ot, minimális DoT (Damage over Time) sebzést is kaphat!
+        if (playerInfection >= 100) {
+            if (typeof toxicTickTimer !== 'undefined' && toxicTickTimer >= 1.0) {
+                if (!isGodMode) playerHealth -= 1; // Lassú elvérzés, ha teljesen átvette az uralmat
+            }
+        }
+    }
 
 // 2. FOLYAMATOS ZOMBI PAJZS SZÁMÍTÁS
         for (let en of enemies) {
@@ -1986,12 +2067,43 @@ function animate() {
                         const healFlash = document.getElementById('heal-flash');
                         if (healFlash) { healFlash.style.opacity = 1; setTimeout(() => healFlash.style.opacity = 0, 500); }
                         if (typeof updateUI === 'function') updateShopButtons(); 
-                    } else {
+                 } else {
                         playSound('deathScream');
                         gameState = 'GAMEOVER'; 
                         document.exitPointerLock(); 
+                        
                         document.getElementById('final-score').innerText = `ADAT: ${score} CR`; 
                         document.getElementById('final-wave').innerText = `TÚLÉLT ITERÁCIÓ: ${currentWave}`; 
+                        
+                        // --- ÚJ: TISZTA LAP (MENTÉS TÖRLÉSE) ---
+                        if (typeof localStorage !== 'undefined') {
+                            localStorage.removeItem('OmniCorpStats');
+                        }
+                        // Memória nullázása is
+                        if (typeof playerStats !== 'undefined') {
+                            playerStats.plantsDestroyed = 0;
+                            playerStats.wavesSurvived = 0;
+                            playerStats.totalDataGathered = 0;
+                            playerStats.skillsBought = 0;
+                            playerStats.activeDirective = null;
+                            playerStats.directiveProgress = 0;
+                            playerStats.completedDirectives = [];
+                            playerStats.abandonedDirectives = [];
+                            // Zombi statisztikák nullázása
+                            for (let key in playerStats.kills) {
+                                playerStats.kills[key] = { body: 0, head: 0 };
+                            }
+                            // Fegyverek nullázása
+                            for (let wKey in weapons) {
+                                if (wKey !== 'pistol') weapons[wKey].owned = false;
+                                weapons[wKey].level = 1;
+                            }
+                            // Skillek nullázása
+                            for (let sKey in skills) {
+                                skills[sKey].level = 0;
+                            }
+                        }
+                        
                         document.getElementById('game-over').classList.remove('hidden');
                     }
                 }
@@ -2044,7 +2156,7 @@ function animate() {
         }
     }
 
-    // --- MEDKIT FELVÉTELE ---
+// --- MEDKIT FELVÉTELE (CSAK A ZSEBBE MEGY!) ---
     for (let i = medkits.length - 1; i >= 0; i--) { 
         const mk = medkits[i]; 
         mk.floatTime += 0.05; 
@@ -2052,26 +2164,10 @@ function animate() {
         
         if (Math.hypot(savedCamX - mk.mesh.position.x, camera.position.z - mk.mesh.position.z) < 1.5) { 
             
-            let maxHP = 100 + (skills.maxHealth.level * 20);
-            let tookMedkit = false;
-
-            // 1. ESET: Sérültek vagyunk -> Azonnal elhasználjuk a Medkitet
-            if (playerHealth < maxHP) {
-                let healAmount = 40 * (1 + (skills.healthLoot.level * 0.2));
-                playerHealth = Math.min(maxHP, playerHealth + healAmount); 
-                tookMedkit = true;
-            } 
-            // 2. ESET: Tele az élet, de van hely a hátizsákban -> Eltesszük későbbre!
-            else if (playerMedkits < maxMedkits) {
+            // CSAK akkor vesszük fel, ha van hely a zsebünkben! Nincs azonnali gyógyulás.
+            if (playerMedkits < maxMedkits) {
                 playerMedkits++;
-                tookMedkit = true;
-            }
-
-            // Ha felvettük (akár azonnal, akár táskába), eltüntetjük a pályáról
-            if (tookMedkit) {
-                playSound('heal'); 
-                const healFlash = document.getElementById('heal-flash');
-                if (healFlash) { healFlash.style.opacity = 1; setTimeout(() => healFlash.style.opacity = 0, 200); }
+                playSound('ammo'); // 'heal' helyett inkább egy tárgy-felvétel hang
                 
                 if (typeof updateUI === 'function') updateUI(); 
                 scene.remove(mk.mesh); 
@@ -2361,62 +2457,147 @@ function animate() {
 
 
 // ==========================================
-// TÖLTŐKÉPERNYŐ ÉS MENÜ LOGIKA
+// TÖLTŐKÉPERNYŐ ÉS TERMINÁL LOGIKA (CINEMATIC)
 // ==========================================
-let minLoadingTimePassed = false;
-let loadingTimer = 0;
+const terminalLogs = [
+    { text: "[SYS] Hálózat ellenőrzése...", color: "#00aaaa" },
+    { text: "[KRONOS] Telemetriai mag betöltése...", color: "#00aaaa" },
+    { text: "[SYS] Geotermikus mag: STABIL. Energiaellátás: 100%.", color: "#00aaaa" },
+    { text: "[BIO] Verdant szennyezettség mérése... 2%... 14%... 94%!", color: "#ff5555" },
+    { text: "[SYS] FIGYELMEZTETÉS: Kritikus biológiai incidens észlelve!", color: "#ff0000" },
+    { text: "[KRONOS] Karantén protokoll: AKTÍV. Szektorok lezárva.", color: "#ff0000" },
+    { text: ">>> EXTERNAL OVERRIDE ACCEPTED. PORT: 99.", color: "#ffaa00" },
+    { text: "[GALLAGHER] ECHO, hallasz engem? A gomba áttörte a karantént...", color: "#ffaa00" },
+    { text: "[KRONOS] ECHO-001 biológiai hardver felébresztése...", color: "#00ffff" },
+    { text: "[ECHO-001] Neurális szinapszisok kalibrálása...", color: "#00ffff" },
+    { text: "[GALLAGHER] Siess! Lent rekedtem az Irányítóban. Ments meg minket...", color: "#ffaa00" },
+    { text: "[WEAPON] Kinetikus rendszerek: ONLINE.", color: "#00ff00" },
+    { text: "[KRONOS] Hozzáférés engedélyezve.", color: "#00ffff" }
+];
 
-const loadInterval = setInterval(() => {
-    loadingTimer += 100; // 100ms-enként frissül
-    
+let currentLogIndex = 0;
+// Egy változó a töltőképernyő zenéjének
+let loadingMusic = null;
+
+function typeTerminalLog() {
+    const logBox = document.getElementById('loading-logs-container');
+    const bgBad = document.getElementById('bg-bad');
     const liquid = document.getElementById('radioactive-liquid');
-    const statusText = document.getElementById('loading-status');
-    const continueBtn = document.getElementById('loading-continue-btn'); // Gomb lekérése
-    
-    // Folyadék animálása 0-tól 90%-ig a fix idő alatt
-    let progress = Math.min((loadingTimer / 5000) * 90, 90);
-    if(liquid) liquid.style.width = progress + '%';
-    if(statusText) statusText.innerText = "Modellek dekódolása... " + Math.floor(progress) + "%";
+    const percentText = document.getElementById('loading-percentage');
 
-    if (loadingTimer >= 5000) minLoadingTimePassed = true;
+    if (!logBox) return;
 
-    // Ha az idő lejárt ÉS a modellek betöltöttek
-    if (minLoadingTimePassed && zombieModel && fastZombieModel && hiderZombieModel && ammoModel && healthModel) {
-        clearInterval(loadInterval);
+    if (currentLogIndex < terminalLogs.length) {
+        let log = terminalLogs[currentLogIndex];
         
-        // Csík 100%-ra ugrik
-        if(liquid) liquid.style.width = '100%';
-        if(statusText) statusText.innerText = "RENDSZER ONLINE. KÉSZENLÉT.";
+        let newDiv = document.createElement('div');
+        newDiv.style.color = log.color;
+        newDiv.style.fontWeight = log.color === "#ffaa00" ? "bold" : "normal";
+        newDiv.style.marginBottom = "5px";
+        logBox.appendChild(newDiv);
+        
+        let charIndex = 0;
+        
+        let typeInterval = setInterval(() => {
+            newDiv.innerHTML += log.text.charAt(charIndex);
+            charIndex++;
+            logBox.scrollTop = logBox.scrollHeight;
 
-        // ÚJ: Automatikus továbbugrás helyett megjelenítjük a gombot
-        if(continueBtn) continueBtn.classList.remove('hidden');
+            // Extra finomság: Írógép hang minden betűnél (ha akarod)
+            // if (typeof playSound === 'function') playSound('ammo', 0, 0); // Olyan kattogós
+            
+            if (charIndex >= log.text.length) {
+                clearInterval(typeInterval);
+                currentLogIndex++;
+                
+                let progressRatio = currentLogIndex / terminalLogs.length;
+                if(bgBad) bgBad.style.opacity = progressRatio; 
+
+                let fakeProgress = Math.floor(progressRatio * 90); 
+                if(liquid) liquid.style.width = fakeProgress + '%';
+                if(percentText) percentText.innerText = fakeProgress + '%';
+                
+                let delay = log.color === "#ffaa00" ? 1200 : 400; 
+                setTimeout(typeTerminalLog, delay);
+            }
+        }, 20); 
+    } 
+    else {
+        let checkModels = setInterval(() => {
+            if (zombieModel && fastZombieModel && hiderZombieModel && ammoModel && healthModel) {
+                clearInterval(checkModels);
+                
+                if(liquid) liquid.style.width = '100%';
+                if(percentText) percentText.innerText = '100%';
+                
+                setTimeout(() => {
+                    document.getElementById('loading-logs-container').style.opacity = '0';
+                    document.getElementById('loading-progress-area').style.opacity = '0';
+                    
+                    const btn = document.getElementById('loading-continue-btn');
+                    btn.classList.remove('hidden');
+                    setTimeout(() => { btn.style.opacity = '1'; }, 50);
+
+                }, 1000); 
+            }
+        }, 500);
     }
-}, 100);
+}
 
-// ==========================================
-// INTRO VIDEÓ ÉS BELÉPÉS LOGIKA
-// ==========================================
+/// 1. LÉPÉS: KATTINTÁS AZ EPILEPSZIA ABLAKON (A játék legelső pillanata!)
+document.getElementById('epilepsy-accept-btn').addEventListener('click', () => {
+    // Hangrendszer feloldása! Ez a legfontosabb.
+    if (typeof listener !== 'undefined' && listener.context.state === 'suspended') {
+        listener.context.resume();
+    }
 
-const introScreen = document.getElementById('intro-video-screen');
-const introVideo = document.getElementById('intro-video');
-
-function showMainMenu() {
-    // 1. Videó képernyő eltüntetése
-    if (introScreen) introScreen.classList.add('hidden');
+    const epiScreen = document.getElementById('epilepsy-screen');
     
-    // 2. Főmenü megnyitása és Zene elindítása!
-    document.getElementById('main-menu').classList.remove('hidden');
+    // Epilepszia eltűnik (Mivel felette volt, most előtűnik a Loading Screen alóla!)
+    if (epiScreen) {
+        epiScreen.style.opacity = '0';
+        epiScreen.style.transition = 'opacity 0.5s';
+        setTimeout(() => epiScreen.style.display = 'none', 500);
+    }
+
+    // TÖLTŐKÉPERNYŐ ZENE ELINDÍTÁSA (A Three.js biztonságos módszerével!)
+    // Pici késleltetéssel indítjuk, hogy a böngésző biztosan feloldja az audiót
+    setTimeout(() => {
+        if (typeof sounds !== 'undefined' && sounds['loadingMusic'] && sounds['loadingMusic'].buffer) {
+            sounds['loadingMusic'].play();
+        }
+    }, 200);
+
+    // Elindul a terminál szövege
+    setTimeout(typeTerminalLog, 1000);
+});
+
+// --- EZ A FÜGGVÉNY HIÁNYZOTT: FŐMENÜ MEGJELENÍTÉSE ---
+window.showMainMenu = function() {
+    const introScreen = document.getElementById('intro-video-screen');
+    const mainMenu = document.getElementById('main-menu');
+
+    // 1. Videó képernyő eltüntetése
+    if (introScreen) {
+        introScreen.classList.add('hidden');
+        // Biztos ami biztos, megállítjuk a videót, ha a háttérben ragadna
+        const introVideo = document.getElementById('intro-video');
+        if (introVideo) introVideo.pause();
+    }
+    
+    // 2. Főmenü megnyitása
+    if (mainMenu) mainMenu.classList.remove('hidden');
     gameState = 'MENU'; 
     
-    // Elindítjuk a nyugodt Főmenü zenét
+    // 3. Főmenü zene elindítása
     if (typeof sounds !== 'undefined' && sounds['menuMusic'] && sounds['menuMusic'].buffer && !sounds['menuMusic'].isPlaying) {
         sounds['menuMusic'].play();
     }
 }
+// ----------------------------------------------------
 
-// Kattintás a "Belépés a Rendszerbe" gombra a betöltés végén
+// 2. LÉPÉS: KATTINTÁS A PULZÁLÓ OMNICORP LOGÓRA
 document.getElementById('loading-continue-btn').addEventListener('click', () => {
-    if (listener.context.state === 'suspended') listener.context.resume();
     
     // Töltőképernyő eltüntetése
     const ls = document.getElementById('loading-screen');
@@ -2425,42 +2606,49 @@ document.getElementById('loading-continue-btn').addEventListener('click', () => 
         setTimeout(() => ls.style.display = 'none', 1000);
     }
     
-    // JOGI LÉPÉS: Epilepszia figyelmeztetés megjelenítése!
-    const epiScreen = document.getElementById('epilepsy-screen');
-    if (epiScreen) epiScreen.classList.remove('hidden');
-});
+    // Töltőképernyő zene leállítása!
+    if (typeof sounds !== 'undefined' && sounds['loadingMusic'] && sounds['loadingMusic'].isPlaying) {
+        sounds['loadingMusic'].stop();
+    }
 
-// Kattintás az "Elfogadom" gombra az epilepszia ablakon
-document.getElementById('epilepsy-accept-btn').addEventListener('click', () => {
-    const epiScreen = document.getElementById('epilepsy-screen');
-    if (epiScreen) epiScreen.classList.add('hidden');
-    
-    // Ha van Intro videó, lejátsszuk
+    // JAVÍTÁS: Frissen megkeressük a videót és a képernyőjét!
+    const introScreen = document.getElementById('intro-video-screen');
+    const introVideo = document.getElementById('intro-video');
+
+    // Intro videó elindítása
     if (introVideo && introVideo.getAttribute('src') !== "" && introVideo.getAttribute('src') !== null) {
-        introScreen.classList.remove('hidden');
+        if (introScreen) introScreen.classList.remove('hidden');
         introVideo.volume = 1.0; 
         introVideo.play().catch(e => {
-            console.warn("Videó lejátszás hiba (Autoplay blokkolva):", e);
-            showMainMenu();
+            console.warn("Videó lejátszás hiba:", e);
+            if (typeof showMainMenu === 'function') showMainMenu();
         });
-        introVideo.onended = () => showMainMenu();
+        introVideo.onended = () => {
+            if (typeof showMainMenu === 'function') showMainMenu();
+        };
     } else {
-        showMainMenu();
+        if (typeof showMainMenu === 'function') showMainMenu();
     }
 });
 
-// --- JAVÍTÁS: A SKIP (Kihagyás) GOMB LOGIKÁJA ---
+// 3. LÉPÉS: INTRO SKIP GOMB
 const skipBtn = document.getElementById('skip-intro-btn');
 if (skipBtn) {
     skipBtn.addEventListener('click', (e) => {
         e.preventDefault();
+        
+        // JAVÍTÁS: Frissen megkeressük a videót!
+        const introVideo = document.getElementById('intro-video');
+        
         if (introVideo) {
             introVideo.pause(); 
-            introVideo.currentTime = 0; // Biztos, ami biztos lenullázzuk a videót
+            introVideo.currentTime = 0; 
         }
-        showMainMenu(); // Azonnal ugrik a főmenübe
+        if (typeof showMainMenu === 'function') showMainMenu(); 
     });
 }
+
+
 
 // Játékciklus Indítása
 animate();
