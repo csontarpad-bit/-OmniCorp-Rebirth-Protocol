@@ -226,12 +226,24 @@ if (tabWeaponsBtn && tabSkillsBtn && tabDirectivesBtn) {
         shopSkillsDiv.classList.remove('hidden');
     });
 
-    // DIREKTÍVA FÜL MEGNYITÁSA
+// DIREKTÍVA FÜL MEGNYITÁSA (Azonnal átirányít a Nagy Menübe!)
     tabDirectivesBtn.addEventListener('click', () => {
-        resetShopTabs();
-        tabDirectivesBtn.classList.add('active');
-        shopDirectivesDiv.classList.remove('hidden');
-        if (typeof renderDirectivesBoard === 'function') renderDirectivesBoard(); // Újrarajzolja a táblát!
+        window.omniDirOpenedFrom = 'shopMenu';
+        const sMenu = document.getElementById('shop-menu');
+        if (sMenu) sMenu.classList.add('hidden');
+        
+        const dMenu = document.getElementById('directives-menu');
+        if (dMenu) {
+            dMenu.classList.remove('hidden');
+            dMenu.style.display = 'flex';
+        }
+        
+        document.querySelectorAll('.dir-tab-btn').forEach(b => b.classList.remove('active'));
+        let infoTab = document.querySelector('.dir-tab-btn[data-tier="info"]');
+        if (infoTab) infoTab.classList.add('active');
+        
+        window.omniCurrentDirTier = 'info';
+        if (typeof renderDirectivesTab === 'function') renderDirectivesTab('info');
     });
 }
 
@@ -239,7 +251,7 @@ if (tabWeaponsBtn && tabSkillsBtn && tabDirectivesBtn) {
 window.openShop = function() {
     gameState = 'SHOPPING'; 
     shopMenu.classList.remove('hidden');
-    
+     document.getElementById('game-ui-wrapper').classList.add('hidden');
     // ==========================================
     // --- KRONOS BÜNTETÉS (SZERZŐDÉSSZEGÉS) ---
     // ==========================================
@@ -300,13 +312,15 @@ document.getElementById('close-shop-btn').addEventListener('click', () => {
     shopMenu.classList.add('hidden');
     gameState = 'PLAYING'; 
     
+    // --- ÚJ: VISSZATESSZÜK A JÁTÉK HUD-OT ---
+    document.getElementById('game-ui-wrapper').classList.remove('hidden');
+    
     // CSAK PC-n kérjük el az egeret, mobilon ez hibát dobna!
     if (window.innerWidth > 768) {
         try { document.body.requestPointerLock(); } catch(e){}
     }
     
     // ITT CSAK A VISSZASZÁMLÁLÓT INDÍTJUK EL! 
-    // Az öregedés már a visszaszámláló BELSŐ logikájában fog lefutni!
     if (typeof startWaveCountdown === 'function') startWaveCountdown(); 
 });
 
@@ -434,6 +448,24 @@ window.updateShopButtons = function() {
     }
 
     if(typeof updateUI === 'function') updateUI();
+
+  
+const infNum = document.getElementById('infection-number');
+if (infNum) {
+    infNum.innerHTML = Math.floor(playerInfection) + '%';
+    
+    // Szín változtatása a veszélyesség alapján
+    if (playerInfection < 30) {
+        infNum.style.color = '#00ff00'; // Biztonságos zöld
+        infNum.style.textShadow = '0 0 5px #00ff00';
+    } else if (playerInfection < 70) {
+        infNum.style.color = '#ffaa00'; // Figyelmeztető sárga
+        infNum.style.textShadow = '0 0 8px #ffaa00';
+    } else {
+        infNum.style.color = '#ff0000'; // Kritikus piros
+        infNum.style.textShadow = '0 0 15px #ff0000';
+    }
+}
 
     // 2. Kártya Generáló Függvény (JAVÍTVA)
     function getBtnHTML(name, imageUrl, stat, price) {
@@ -685,31 +717,39 @@ window.updateUI = function() {
     let maxHP = 100 + (skills.maxHealth.level * 20);
     
 
-    // Szám és Medkitek frissítése a HUD-on
+// Szám és Medkitek frissítése a HUD-on
     const healthNum = document.getElementById('health-number');
     if (healthNum) {
-        // Kiírjuk a HP-t, és ha van Medkitünk, odaírjuk kicsiben, hogy hányszor nyomhatunk 'H'-t!
-        let medkitText = playerMedkits > 0 ? `<span style="font-size: 16px; color:#ff5555; vertical-align: top; margin-left: 5px;">[+${playerMedkits}]</span>` : '';
-        healthNum.innerHTML = Math.max(0, Math.floor(playerHealth)) + medkitText;
+        // Most már CSAK magát a HP számot írjuk be!
+        healthNum.innerHTML = Math.max(0, Math.floor(playerHealth));
     }
     
-    // Csíkok frissítése (Fehér a tiszta HP, Kék a Páncél)
-    if(healthFill) {
-        healthFill.style.width = Math.max(0, (playerHealth / maxHP) * 100) + '%';
-        // Ha nagyon kevés az élet (20% alatt), akkor pirosra vált a csík és a szám is!
-        if (playerHealth / maxHP <= 0.2) {
-            healthFill.style.background = '#ff0000';
-            healthFill.style.boxShadow = '0 0 15px #ff0000';
-            if (healthNum) healthNum.style.color = '#ff0000';
+    // Medkit külön kezelése az új azonosító alapján
+    const medkitCounter = document.getElementById('medkit-counter');
+    if (medkitCounter) {
+        if (playerMedkits > 0) {
+            medkitCounter.style.display = 'inline-block';
+            medkitCounter.innerText = `[+${playerMedkits}]`;
         } else {
-            healthFill.style.background = '#fff';
-            healthFill.style.boxShadow = '0 0 10px rgba(255,255,255,0.5)';
-            if (healthNum) healthNum.style.color = '#fff';
+            medkitCounter.style.display = 'none'; // Eltüntetjük, ha nincs nálunk
         }
     }
     
     if(armorFill) armorFill.style.width = Math.max(0, playerArmor) + '%';
   
+    // FERTŐZÉS FRISSÍTÉSE AZONNAL
+    const infNum = document.getElementById('infection-number');
+    if (infNum && typeof playerInfection !== 'undefined') {
+        infNum.innerHTML = Math.floor(playerInfection) + '%';
+        if (playerInfection < 30) {
+            infNum.style.color = '#00ff00'; infNum.style.textShadow = '0 0 5px #00ff00';
+        } else if (playerInfection < 70) {
+            infNum.style.color = '#ffaa00'; infNum.style.textShadow = '0 0 8px #ffaa00';
+        } else {
+            infNum.style.color = '#ff0000'; infNum.style.textShadow = '0 0 15px #ff0000';
+        }
+    }
+
 // 2. BÓNUSZ IDŐZÍTŐ ÉS KREDIT PANEL KIJELZÉSE (Fent Középen)
     const bonusPanel = document.getElementById('bonus-panel');
     const timerDisplay = document.getElementById('timer-display');
@@ -904,6 +944,7 @@ document.getElementById('restart-btn').addEventListener('click', (e) => {
     document.getElementById('game-over').classList.add('hidden');
     document.getElementById('game-ui-wrapper').classList.add('hidden');
     document.getElementById('main-menu').classList.remove('hidden');
+    document.body.classList.remove('drugged', 'infected-mild', 'infected-medium', 'infected-severe');
     gameState = 'MENU';
 
     // --- ÚJ: ZENÉK KEZELÉSE ---
@@ -958,19 +999,35 @@ if (omniOpenDirBtn) {
     });
 }
 
-// Bezárás
+// ==========================================
+// DIREKTÍVÁK MENÜ BEZÁRÁSA (OKOS GOMB)
+// ==========================================
 var omniCloseDirBtn = document.getElementById('close-directives-btn');
 if (omniCloseDirBtn) {
     omniCloseDirBtn.addEventListener('click', () => {
+        // 1. Bezárjuk a Direktíva ablakot
         if (omniDirMenu) {
             omniDirMenu.classList.add('hidden');
             omniDirMenu.style.display = 'none';
         }
-        if (window.omniDirOpenedFrom === 'mainMenu' && typeof mainMenu !== 'undefined') mainMenu.classList.remove('hidden');
-        else if (window.omniDirOpenedFrom === 'shopMenu' && typeof shopMenu !== 'undefined') shopMenu.classList.remove('hidden');
-        else if (window.omniDirOpenedFrom === 'pauseMenu') document.getElementById('pause-menu').classList.remove('hidden'); 
+        
+        // 2. Visszatérünk oda, ahonnan jöttünk
+        if (window.omniDirOpenedFrom === 'mainMenu') {
+            const mainMenu = document.getElementById('main-menu');
+            if (mainMenu) mainMenu.classList.remove('hidden');
+        } 
+        else if (window.omniDirOpenedFrom === 'shopMenu') {
+            const shopMenu = document.getElementById('shop-menu');
+            if (shopMenu) shopMenu.classList.remove('hidden');
+            if (typeof updateShopButtons === 'function') updateShopButtons();
+        } 
+        else if (window.omniDirOpenedFrom === 'pauseMenu') { 
+            const pauseMenu = document.getElementById('pause-menu');
+            if (pauseMenu) pauseMenu.classList.remove('hidden'); 
+        }
     });
 }
+
 
 // Fül váltás logika
 document.querySelectorAll('.dir-tab-btn').forEach(btn => {
@@ -1063,7 +1120,7 @@ window.renderDirectivesTab = function(tier) {
         let bgColor = "rgba(30, 20, 0, 0.7)";
         let btnHTML = "";
 
-      if (isCompleted) {
+        if (isCompleted) {
             statusText = `<span style="color:#00ff00; font-weight:bold; float:right;">[ ADAT ELKÜLDVE ]</span>`;
             bgColor = "rgba(0, 50, 50, 0.4)"; 
         } else if (isAbandoned) {
@@ -1072,9 +1129,21 @@ window.renderDirectivesTab = function(tier) {
         } else if (isActive) {
             statusText = `<span style="color:#00ffff; font-weight:bold; float:right;">[ ELEMZÉS: ${playerStats.directiveProgress} / ${d.goal} ]</span>`;
             bgColor = "rgba(0, 60, 60, 0.8)"; 
-            btnHTML = `<button class="directive-action-btn directive-abandon-btn" onclick="abandonDirective()">TESZT MEGSZAKÍTÁSA</button>`;
+            
+            // JAVÍTÁS: Ha a Szünet menüből jöttünk, a gomb le van tiltva!
+            if (window.omniDirOpenedFrom === 'pauseMenu') {
+                btnHTML = `<div style="position: absolute; right: 15px; bottom: 15px; color: #ff5555; font-size: 12px; font-weight: bold; border: 1px solid #ff5555; padding: 5px;">[ MÓDOSÍTÁS LETILTVA: HARC FOLYAMATBAN ]</div>`;
+            } else {
+                btnHTML = `<button class="directive-action-btn directive-abandon-btn" onclick="abandonDirective()">TESZT MEGSZAKÍTÁSA</button>`;
+            }
+            
         } else {
-            btnHTML = `<button class="directive-action-btn" onclick="acceptDirective('${d.id}')">PROTOKOLL INDÍTÁSA</button>`;
+            // JAVÍTÁS: Ha a Szünet menüből jöttünk, nem lehet új küldetést felvenni!
+            if (window.omniDirOpenedFrom === 'pauseMenu') {
+                btnHTML = `<div style="position: absolute; right: 15px; bottom: 15px; color: #888; font-size: 12px; font-weight: bold; border: 1px solid #555; padding: 5px;">[ KIVÁLASZTÁS LETILTVA: HARC FOLYAMATBAN ]</div>`;
+            } else {
+                btnHTML = `<button class="directive-action-btn" onclick="acceptDirective('${d.id}')">PROTOKOLL INDÍTÁSA</button>`;
+            }
         }
 
         listHTML += `
@@ -1333,20 +1402,28 @@ function createArchiveButton(title, text, isUnlocked, reqText, imageUrl, statTex
 }
 
 // ==========================================
-// SZERZŐDÉS KEZELŐ FÜGGVÉNYEK (JAVÍTVA)
+// SZERZŐDÉS KEZELŐ FÜGGVÉNYEK
 // ==========================================
 
 // 1. Szerződés elfogadása
 window.acceptDirective = function(id) {
     if (playerStats.activeDirective) {
-        alert("Már van egy aktív protokoll! Fejezd be, vagy szakítsd meg előbb!");
+        // JAVÍTÁS: A csúnya böngészős alert() helyett a mi saját, szép ablakunkat nyitjuk meg!
+        const alertBox = document.getElementById('custom-alert-overlay');
+        if (alertBox) alertBox.style.display = 'flex';
         return;
     }
+    
     playerStats.activeDirective = id;
     playerStats.directiveProgress = 0; 
     
-    // JAVÍTVA: A helyes változót használjuk, így frissül a gomb!
     renderDirectivesTab(window.omniCurrentDirTier); 
+}
+
+// 1.5. Saját hibaüzenet bezárása
+window.closeCustomAlert = function() {
+    const alertBox = document.getElementById('custom-alert-overlay');
+    if (alertBox) alertBox.style.display = 'none';
 }
 
 // 2. Megszakítás gomb (Csak megnyitja a piros ablakot)
@@ -1595,27 +1672,9 @@ if(pauseOptBtn) {
     });
 }
 
-// 4. DIREKTÍVÁK MEGNYITÁSA PAUSE ALATT
-const pauseDirBtn = document.getElementById('pause-dir-btn');
-if(pauseDirBtn) {
-    pauseDirBtn.addEventListener('click', () => {
-        dirOpenedFrom = 'pauseMenu'; 
-        pauseMenu.classList.add('hidden');
-        const dirMenu = document.getElementById('directives-menu');
-        if (dirMenu) {
-            dirMenu.classList.remove('hidden');
-            dirMenu.style.display = 'flex';
-        }
-        // JAVÍTÁS: Átváltunk az Áttekintés fülre és kirajzoljuk!
-        document.querySelectorAll('.dir-tab-btn').forEach(b => b.classList.remove('active'));
-        let infoBtn = document.querySelector('.dir-tab-btn[data-tier="info"]');
-        if (infoBtn) infoBtn.classList.add('active');
-        currentDirTier = 'info';
-        if (typeof renderDirectivesTab === 'function') renderDirectivesTab('info');
-    });
-}
 
-// 5. KÓDEX MEGNYITÁSA PAUSE ALATT
+
+// 4. KÓDEX MEGNYITÁSA PAUSE ALATT
 const pauseCodexBtn = document.getElementById('pause-codex-btn');
 if(pauseCodexBtn) {
     pauseCodexBtn.addEventListener('click', () => {
