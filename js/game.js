@@ -254,7 +254,7 @@ window.playHitmarkerSound = function() {
 // ==========================================
 const textureLoader = new THREE.TextureLoader(); 
 // VISSZAÁLLÍTVA A RÉGI MŰKÖDŐ BETÖLTÉSRE
-const floorTex = textureLoader.load('https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/6ff430b224fb8cd358b83fade1e06710d708d094/1783431196560.png'); 
+const floorTex = textureLoader.load('https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/35c845f70c8ae3a8577562a70a9abac70baadcf1/Pictures/LVL3%20Floor.png'); 
 floorTex.wrapS = THREE.RepeatWrapping; floorTex.wrapT = THREE.RepeatWrapping; floorTex.repeat.set(10, 10); 
 const wallTex = textureLoader.load('https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/6ff430b224fb8cd358b83fade1e06710d708d094/1783431502863.png'); 
 wallTex.wrapS = THREE.RepeatWrapping; wallTex.wrapT = THREE.RepeatWrapping; wallTex.repeat.set(4, 1); 
