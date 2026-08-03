@@ -9,6 +9,8 @@ var mouseSensitivity = 0.003;
 var isGodMode = false;
 
 var playerHealth = 100;
+var playerInfection = 0; // ÚJ: 0-tól 100%-ig terjedő skála
+var infectionSpasmTimer = 0; // Mikor jön a következő "idegrángás"
 var playerArmor = 0; 
 var playerMedkits = 0; 
 var maxMedkits = 3; 
