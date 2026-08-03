@@ -547,3 +547,58 @@ body.drugged {
     box-shadow: 0 0 10px rgba(0,255,255,0.3);
     font-weight: bold;
 }
+
+/* ==========================================
+   CINEMATIKUS TÖLTŐKÉPERNYŐ EFFEKTEK
+   ========================================== */
+.pulse-logo {
+    animation: pulseGlow 2s infinite alternate ease-in-out;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+.pulse-logo:hover {
+    transform: scale(1.05);
+}
+@keyframes pulseGlow {
+    0% { filter: drop-shadow(0 0 10px rgba(0, 255, 255, 0.4)); transform: scale(0.95); }
+    100% { filter: drop-shadow(0 0 40px rgba(0, 255, 255, 0.9)); transform: scale(1.05); }
+}
+
+.fade-transition {
+    transition: opacity 1s ease-in-out;
+}
+
+/* ==========================================
+   OMNICORP CUSTOM SCROLLBAR (GÖRGETŐSÁV)
+   ========================================== */
+::-webkit-scrollbar {
+    width: 8px; /* Karcsú, modern vastagság */
+    background: rgba(0, 15, 15, 0.9); /* Sötét háttér */
+    border-left: 1px solid #003333;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #005555; /* Alap szín */
+    border-radius: 4px;
+    box-shadow: inset 0 0 5px rgba(0, 255, 255, 0.2);
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #00ffff; /* Világít, ha ráhúzod az egeret! */
+    box-shadow: 0 0 10px #00ffff;
+}
+
+::-webkit-scrollbar-corner {
+    background: transparent;
+}
+
+/* Enyhe, de állandó beteges színeltolódás a magas fertőzéshez */
+body.infected-mild {
+    filter: saturate(150%) hue-rotate(15deg);
+}
+body.infected-medium {
+    filter: saturate(200%) hue-rotate(30deg) contrast(120%);
+}
+body.infected-severe {
+    filter: saturate(250%) hue-rotate(45deg) contrast(150%) blur(1px);
+}
