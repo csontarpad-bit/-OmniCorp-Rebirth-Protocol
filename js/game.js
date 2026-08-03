@@ -181,6 +181,9 @@ function loadSound(name, url, volume = 1.0, isLoop = false) {
       
     });
 }
+loadSound('cough', 'https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/537e7833404c4f1d16355bce8db5451231f4797e/coughing.mp3', 1.0);
+loadSound('pickup', 'https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/610723d633422339cc4d1d3384fcc2a70a98f27a/pick%20up%20item.mp3', 1.0);
+loadSound('whispers', 'https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/610723d633422339cc4d1d3384fcc2a70a98f27a/whispers.mp3', 0.0, true); 
 loadSound('loadingMusic', 'https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/fea9f5d83283e004ddc56527e42e8d665ef93bc0/Loading%20Screen%20music.mp3', 0.5, true);
 loadSound('cryoGas', 'https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/5abe88d4b8b1dd33f0887daa25511297b89eecbd/cryo%20gas.mp3', 0.8);
 loadSound('iceCrack', 'https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/46c22b763dcc098c3c6581afdfbccad22203c429/ice%20brake.mp3', 0.5); // Halkabbra vesszük, ez csak háttérzaj
@@ -889,8 +892,14 @@ window.addEventListener('keydown', (e) => {
             
             // FERTŐZÉS + DROG EFFEKT (MINDEN HASZNÁLATKOR!)
             playerInfection = Math.min(100, playerInfection + 5); 
-            druggedTimer = 1.5; 
+            
+            // JAVÍTÁS: Csak vizuális effektet adunk, nem indítjuk el a sebző druggedTimer-t!
             document.body.classList.add('drugged');
+            setTimeout(() => {
+                if (typeof druggedTimer !== 'undefined' && druggedTimer <= 0) {
+                    document.body.classList.remove('drugged');
+                }
+            }, 1500);
             
             playSound('heal'); 
             const healFlash = document.getElementById('heal-flash');
@@ -1203,6 +1212,42 @@ window.startGame = function() {
         return; 
     }
 
+    // =========================================================
+    // --- ÚJ: TELJES "GYÁRI VISSZAÁLLÍTÁS" (TISZTA LAP) ---
+    // =========================================================
+    
+    // 1. Képességek (Skillek) nullázása
+    for (let sKey in skills) {
+        skills[sKey].level = 0;
+    }
+
+    // 2. Fegyverek pontos alaphelyzetbe állítása (Visszaáll a sebzés és elvesznek a megvett fegyverek)
+    weapons.pistol = { name: 'Pisztoly', level: 1, damage: 1, ammo: 10, reserve: 30, maxAmmo: 10, maxReserve: 30, pellets: 1, spread: 0, reloadTime: 1500, owned: true, auto: false, fireRate: 0, image: "https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/45abc3b3555b01cf93886d8560800ff7f3c5871c/pisztoly.png" };
+    weapons.shotgun = { name: 'Sörétes', level: 1, damage: 1.2, ammo: 0, reserve: 0, maxAmmo: 6, maxReserve: 24, pellets: 6, spread: 0.15, reloadTime: 2000, owned: false, auto: false, fireRate: 0, image: "https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/45abc3b3555b01cf93886d8560800ff7f3c5871c/sz%C3%B6r%C3%A9tes.png" };
+    weapons.rifle = { name: 'Gépkarabély', level: 1, damage: 0.8, ammo: 0, reserve: 0, maxAmmo: 30, maxReserve: 90, pellets: 1, spread: 0.05, reloadTime: 1800, owned: false, auto: true, fireRate: 0.12, image: "https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/df39681a8668bd04e80660051e5755ff31995ba7/g%C3%A9gkarab%C3%A9ly.png" };
+    weapons.super = { name: 'Szuper fegyver', level: 1, damage: 15, ammo: 0, reserve: 0, maxAmmo: 5, maxReserve: 15, pellets: 1, spread: 0, reloadTime: 2500, owned: false, auto: false, fireRate: 0, image: "https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/df39681a8668bd04e80660051e5755ff31995ba7/revolver.png" };
+
+    // 3. Túlélő felszerelés és Direktívák (Küldetések) nullázása
+    playerMedkits = 0;
+    playerArmor = 0;
+    currentWeaponId = 'pistol';
+
+// --- FAGYASZTÁS GOMB ÉS IDŐZÍTŐK ELREJTÉSE/NULLÁZÁSA ---
+    activeFreezeTimer = 0;
+    freezeCooldown = 0;
+    const fBtnUI = document.getElementById('freeze-btn');
+    if (fBtnUI) fBtnUI.classList.add('hidden');
+
+    if (typeof playerStats !== 'undefined') {
+        playerStats.activeDirective = null;
+        playerStats.directiveProgress = 0;
+        playerStats.completedDirectives = []; 
+        playerStats.abandonedDirectives = [];
+        playerStats.weaponsBought = { shotgun: false, rifle: false, super: false };
+        playerStats.skillsBought = 0;
+    }
+    // =========================================================
+
     // --- A HIBA JAVÍTÁSA: Azonnal leállítjuk a hullámot, hogy ne nyíljon ki a bolt! ---
     isWaveActive = false; 
 
@@ -1228,12 +1273,27 @@ window.startGame = function() {
     if (sounds['music'] && sounds['music'].buffer && !sounds['music'].isPlaying) sounds['music'].play();
     
     gameState = 'PLAYING'; 
-    playerHealth = 100; playerArmor = 0; score = 0; 
-    currentWave = 1; enemiesToSpawn = 5; currentWeaponId = 'pistol'; // VISSZAÁLL 1-RE!
-    weapons.pistol.ammo = weapons.pistol.maxAmmo; weapons.pistol.reserve = weapons.pistol.maxReserve;
+    playerHealth = 100; // Mert a skillek nullázódtak, a max 100 lesz!
+    playerArmor = 0; 
+    score = 0; 
+    
+    // --- FERTŐZÉS ÉS DROG LENULLÁZÁSA INDÍTÁSKOR ---
+    playerInfection = 0;
+    druggedTimer = 0;
+    document.body.classList.remove('drugged', 'infected-mild', 'infected-medium', 'infected-severe');
+    if (typeof sounds !== 'undefined' && sounds['whispers'] && sounds['whispers'].isPlaying) {
+        sounds['whispers'].stop();
+    }
+    // --------------------------------------------------
+    
+    currentWave = 1; 
+    enemiesToSpawn = 5; 
+    currentWeaponId = 'pistol'; // VISSZAÁLL 1-RE!
+    weapons.pistol.ammo = weapons.pistol.maxAmmo; 
+    weapons.pistol.reserve = weapons.pistol.maxReserve;
     
     if (typeof updateUI === 'function') updateUI(); 
-    camera.position.set(0, 1.6, 0); 
+    camera.position.set(0, 1.6, 0);
     
     const radarContainer = document.getElementById('radar');
     
@@ -1444,8 +1504,19 @@ function animate() {
                         if (typeof updateShopButtons === 'function') updateShopButtons();
                    } else {
                         playSound('deathScream');
+                      
                         gameState = 'GAMEOVER'; 
                         document.exitPointerLock(); 
+
+                // --- ÚJ TAKARÍTÁS HALÁLKOR ---
+                        document.body.classList.remove('drugged', 'infected-mild', 'infected-medium', 'infected-severe');
+                        playerInfection = 0; // Nullázzuk a fertőzést
+                        if (typeof sounds !== 'undefined' && sounds['whispers'] && sounds['whispers'].isPlaying) {
+                        sounds['whispers'].stop(); // Leállítjuk a suttogást
+                        }
+                // -----------------------------
+
+                        
                         
                         document.getElementById('final-score').innerText = `ADAT: ${score} CR`; 
                         document.getElementById('final-wave').innerText = `TÚLÉLT ITERÁCIÓ: ${currentWave}`; 
@@ -1502,7 +1573,7 @@ function animate() {
             
             if (infectionSpasmTimer <= 0) {
                 // Rángás aktiválása!
-                playSound('glitch'); 
+                playSound('cough');
                 cameraShake = 0.3 * (playerInfection / 100); // Rángás erőssége a fertőzéstől függ
                 
                 const glitchOverlay = document.getElementById('glitch-overlay');
@@ -1584,6 +1655,20 @@ function animate() {
         }
         fogSystem.geometry.attributes.position.needsUpdate = true;
     }
+
+    // --- SUTTOGÁS HANGEREJÉNEK KEZELÉSE ---
+if (sounds['whispers'] && sounds['whispers'].buffer) {
+    // Ha még nem szól, elindítjuk (de a hangereje a fertőzéstől függ)
+    if (!sounds['whispers'].isPlaying) sounds['whispers'].play();
+    
+    // Kiszámoljuk a hangerőt: 0% fertőzés = 0.0 hangerő, 100% fertőzés = 1.0 hangerő
+    let whisperVolume = playerInfection / 100;
+    
+    // Csak 10% felett kezdődjön el halkan, hogy legyen egy kis alapzaj mentessége
+    if (playerInfection < 10) whisperVolume = 0; 
+    
+    sounds['whispers'].setVolume(whisperVolume);
+}
 
 // ==========================================
     // MUTÁLÓDÓ POCSOLYÁK ANIMÁCIÓJA (PULZÁLÁS & VÖRÖSÖDÉS)
@@ -2071,6 +2156,14 @@ function animate() {
                         playSound('deathScream');
                         gameState = 'GAMEOVER'; 
                         document.exitPointerLock(); 
+
+                        // --- ÚJ TAKARÍTÁS HALÁLKOR ---
+                        document.body.classList.remove('drugged', 'infected-mild', 'infected-medium', 'infected-severe');
+                        playerInfection = 0; // Nullázzuk a fertőzést
+                        if (typeof sounds !== 'undefined' && sounds['whispers'] && sounds['whispers'].isPlaying) {
+                        sounds['whispers'].stop(); // Leállítjuk a suttogást
+                        }
+                        // -----------------------------
                         
                         document.getElementById('final-score').innerText = `ADAT: ${score} CR`; 
                         document.getElementById('final-wave').innerText = `TÚLÉLT ITERÁCIÓ: ${currentWave}`; 
@@ -2157,26 +2250,47 @@ function animate() {
     }
 
 // --- MEDKIT FELVÉTELE (CSAK A ZSEBBE MEGY!) ---
-    for (let i = medkits.length - 1; i >= 0; i--) { 
-        const mk = medkits[i]; 
-        mk.floatTime += 0.05; 
-        mk.mesh.position.y = mk.startY + Math.sin(mk.floatTime) * 0.3; 
+for (let i = medkits.length - 1; i >= 0; i--) { 
+    const mk = medkits[i]; 
+    mk.floatTime += 0.05; 
+    mk.mesh.position.y = mk.startY + Math.sin(mk.floatTime) * 0.3; 
+    
+    if (Math.hypot(savedCamX - mk.mesh.position.x, camera.position.z - mk.mesh.position.z) < 1.5) { 
         
-        if (Math.hypot(savedCamX - mk.mesh.position.x, camera.position.z - mk.mesh.position.z) < 1.5) { 
+        // CSAK akkor vesszük fel, ha van hely a zsebünkben!
+        if (playerMedkits < maxMedkits) {
+            playerMedkits++;
             
-            // CSAK akkor vesszük fel, ha van hely a zsebünkben! Nincs azonnali gyógyulás.
-            if (playerMedkits < maxMedkits) {
-                playerMedkits++;
-                playSound('ammo'); // 'heal' helyett inkább egy tárgy-felvétel hang
+            playSound('pickup'); // <--- AZ ÚJ HANG!
+            
+            // --- VIZUÁLIS KIÍRÁS ---
+            const lootPopup = document.getElementById('loot-popup');
+            if (lootPopup) {
+                lootPopup.innerText = "+1 GEN-STAB BEGYŰJTVE";
+                lootPopup.style.color = "#00ff00"; // Zöld szín a gyógyításnak
+                lootPopup.style.textShadow = "0 0 10px #00ff00";
                 
-                if (typeof updateUI === 'function') updateUI(); 
-                scene.remove(mk.mesh); 
-                medkits.splice(i, 1); 
+                // Animáció újraindítása (felugrik és eltűnik)
+                lootPopup.style.transition = "none";
+                lootPopup.style.opacity = 1;
+                lootPopup.style.top = "60%";
+                
+                // Két tizedmásodperc múlva elindítjuk a felcsúszó, elhalványuló animációt
+                setTimeout(() => {
+                    lootPopup.style.transition = "opacity 1.5s, top 1.5s ease-out";
+                    lootPopup.style.opacity = 0;
+                    lootPopup.style.top = "50%";
+                }, 50);
             }
+            
+            if (typeof updateUI === 'function') updateUI(); 
+            scene.remove(mk.mesh); 
+            medkits.splice(i, 1); 
         }
     }
+}
     
-    // --- LŐSZER FELVÉTELE ---
+ // --- LŐSZER FELVÉTELE ---
     for (let i = ammoBoxes.length - 1; i >= 0; i--) { 
         const ab = ammoBoxes[i]; 
         ab.floatTime += 0.05; 
@@ -2194,10 +2308,31 @@ function animate() {
 
             // Ha tele van minden, BÉKÉN HAGYJUK a dobozt!
             if (needsAmmo) {
-                playSound('ammo'); 
+                playSound('pickup'); // <--- AZ ÚJ KUTATÓ/FELVEVŐ HANG
+                
                 const ammoFlash = document.getElementById('ammo-flash'); 
                 if(ammoFlash) { ammoFlash.style.opacity = 1; setTimeout(() => ammoFlash.style.opacity = 0, 200); }
                
+                // --- VIZUÁLIS KIÍRÁS (POP-UP) ---
+                const lootPopup = document.getElementById('loot-popup');
+                if (lootPopup) {
+                    lootPopup.innerText = "+ LŐSZER BEGYŰJTVE";
+                    lootPopup.style.color = "#ffcc00"; // Sárgás-narancs szín a lőszernek
+                    lootPopup.style.textShadow = "0 0 10px #ffcc00";
+                    
+                    // Animáció újraindítása (felugrik és eltűnik)
+                    lootPopup.style.transition = "none";
+                    lootPopup.style.opacity = 1;
+                    lootPopup.style.top = "60%";
+                    
+                    // Pici késleltetéssel elindítjuk a felcsúszó, elhalványuló animációt
+                    setTimeout(() => {
+                        lootPopup.style.transition = "opacity 1.5s, top 1.5s ease-out";
+                        lootPopup.style.opacity = 0;
+                        lootPopup.style.top = "50%";
+                    }, 50);
+                }
+
                 if (typeof giveGlobalAmmo === 'function') giveGlobalAmmo();
     
                 if (typeof updateUI === 'function') updateUI(); 
@@ -2286,6 +2421,14 @@ function animate() {
             } else {
                 gameState = 'GAMEOVER'; 
                 document.exitPointerLock(); 
+
+            // --- ÚJ TAKARÍTÁS HALÁLKOR ---
+                document.body.classList.remove('drugged', 'infected-mild', 'infected-medium', 'infected-severe');
+                playerInfection = 0; // Nullázzuk a fertőzést
+                if (typeof sounds !== 'undefined' && sounds['whispers'] && sounds['whispers'].isPlaying) {
+                sounds['whispers'].stop(); // Leállítjuk a suttogást
+                }
+            // -----------------------------
                 document.getElementById('final-score').innerText = `PÉNZ: ${score}`; 
                 document.getElementById('final-wave').innerText = `TÚLÉLT HULLÁMOK: ${currentWave}`; 
                 document.getElementById('game-over').classList.remove('hidden');
