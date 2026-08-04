@@ -450,8 +450,8 @@ window.updateShopButtons = function() {
     if(typeof updateUI === 'function') updateUI();
 
   
-const infNum = document.getElementById('infection-number');
-if (infNum) {
+    const infNum = document.getElementById('infection-number');
+    if (infNum) {
     infNum.innerHTML = Math.floor(playerInfection) + '%';
     
     // Szín változtatása a veszélyesség alapján
@@ -465,7 +465,7 @@ if (infNum) {
         infNum.style.color = '#ff0000'; // Kritikus piros
         infNum.style.textShadow = '0 0 15px #ff0000';
     }
-}
+    }
 
     // 2. Kártya Generáló Függvény (JAVÍTVA)
     function getBtnHTML(name, imageUrl, stat, price) {
@@ -519,11 +519,11 @@ if (infNum) {
         { id: 'speed', name: 'CYBER LÁB', desc: '+20% Sebesség', image: "" },
         { id: 'ammoLoot', name: 'LŐSZER ZSEB', desc: '+20% Max Tartalék', image: "" },
         { id: 'healthLoot', name: 'NANOBOTOK', desc: '+20% Gyógyulás', image: "" },
-        { id: 'revive', name: 'ÚJRAÉLESZTŐ', desc: '+1 Extra Élet', image: "" },
+        { id: 'revive', name: 'AUTOMATA DEFIBRILLÁTOR', desc: 'Újraélesztés + 40% Fertőzés Tisztítás', image: "" },
         { id: 'freeze', name: 'CRYO-OVERRIDE', desc: '+2 mp Rendszeridő', image: "" }
     ];
 
-skillsData.forEach(sData => {
+    skillsData.forEach(sData => {
         let btn = document.getElementById(`skill-${sData.id}`);
         if (!btn) return;
         let s = skills[sData.id];
@@ -536,8 +536,8 @@ skillsData.forEach(sData => {
             let btnActionText = `KALIBRÁCIÓ: ${upgPrice} CR`; // Alapértelmezett gomb szöveg
             
             if (sData.id === 'revive') {
-                levelText = `RAKTÁRON: <span style="color:#fff;">${s.level} DB</span>`;
-                btnActionText = `SZINTÉZIS: ${upgPrice} CR`;
+                levelText = `AKTÍV TÖLTÉSEK: <span style="color:#fff;">${s.level} / ${s.maxLevel}</span>`;
+                btnActionText = `ÚJRAKALIBRÁLÁS: ${upgPrice} CR`;
             } else if (sData.id === 'freeze') {
                 // A te új, lore-barát szöveged a hűtőrendszerhez!
                 levelText = `LICENC SZINT: <span style="color:#fff;">${s.level}</span> / ${s.maxLevel}`;
@@ -577,9 +577,10 @@ skillsData.forEach(sData => {
             ammoBtn.disabled = (score < 50);
         }
 
-        ammoBtn.onclick = () => {
+    ammoBtn.onclick = () => {
             if (needsAmmo && score >= 50) { 
                 score -= 50; 
+                playSound('pickup'); // <--- ÚJ HANG
                 if (typeof giveGlobalAmmo === 'function') giveGlobalAmmo(); 
                 updateShopButtons(); 
             } else flashMoneyError();
@@ -601,11 +602,11 @@ skillsData.forEach(sData => {
             medkitBtn.disabled = (score < medkitCost);
         }
         
-        medkitBtn.onclick = () => {
+    medkitBtn.onclick = () => {
             if (playerMedkits < maxMedkits && score >= medkitCost) {
                 score -= medkitCost; 
                 playerMedkits++; 
-                if (typeof playSound === 'function') playSound('heal');
+                playSound('pickup'); // <--- ÚJ HANG
                 updateShopButtons(); 
             } else flashMoneyError();
         };
@@ -640,7 +641,19 @@ skillsData.forEach(sData => {
         };
     }
 
-
+    // FERTŐZÉS frissítése a boltban
+    const shopInfDisplay = document.getElementById('shop-infection-display');
+    if (shopInfDisplay && typeof playerInfection !== 'undefined') {
+        let inf = Math.floor(playerInfection);
+        shopInfDisplay.innerText = `${inf}%`;
+        if (inf < 30) {
+            shopInfDisplay.style.color = '#00ff00'; shopInfDisplay.style.textShadow = '0 0 10px #00ff00';
+        } else if (inf < 70) {
+            shopInfDisplay.style.color = '#ffaa00'; shopInfDisplay.style.textShadow = '0 0 10px #ffaa00';
+        } else {
+            shopInfDisplay.style.color = '#ff0000'; shopInfDisplay.style.textShadow = '0 0 15px #ff0000';
+        }
+    }
 
     // --- KEVLÁR PÁNCÉL VÁSÁRLÁSA ---
     const armorBtn = document.getElementById('buy-armor');
@@ -666,8 +679,8 @@ skillsData.forEach(sData => {
         armorBtn.onclick = () => {
             if (playerArmor < maxArmor && score >= armorCost) {
                 score -= armorCost; 
-                playerArmor = Math.min(maxArmor, playerArmor + 25); // Hozzáad 25 páncélt
-                if (typeof playSound === 'function') playSound('ammo'); // Kattógó hang
+                playerArmor = Math.min(maxArmor, playerArmor + 25);
+                playSound('pickup'); // <--- ÚJ HANG
                 updateShopButtons(); 
             } else flashMoneyError();
         };
@@ -944,19 +957,20 @@ document.getElementById('restart-btn').addEventListener('click', (e) => {
     document.getElementById('game-over').classList.add('hidden');
     document.getElementById('game-ui-wrapper').classList.add('hidden');
     document.getElementById('main-menu').classList.remove('hidden');
+    
+    // --- TAKARÍTÁS ÚJRAINDÍTÁSKOR ---
     document.body.classList.remove('drugged', 'infected-mild', 'infected-medium', 'infected-severe');
-    gameState = 'MENU';
-
-    // --- ÚJ: ZENÉK KEZELÉSE ---
-    // 1. Leállítjuk a játék közbeni harci zenét (ha megy)
-    if (typeof sounds !== 'undefined' && sounds['music'] && sounds['music'].isPlaying) {
-        sounds['music'].stop();
+    if (typeof playerInfection !== 'undefined') playerInfection = 0;
+    if (typeof druggedTimer !== 'undefined') druggedTimer = 0;
+    if (typeof sounds !== 'undefined' && sounds['whispers'] && sounds['whispers'].isPlaying) {
+        sounds['whispers'].stop(); // Suttogás kikapcsolása
     }
     
-    // 2. Elindítjuk a nyugodt Főmenü zenét (ha még nem megy)
-    if (typeof sounds !== 'undefined' && sounds['menuMusic'] && sounds['menuMusic'].buffer && !sounds['menuMusic'].isPlaying) {
-        sounds['menuMusic'].play();
-    }
+    gameState = 'MENU';
+
+    // Zenék cseréje
+    if (typeof sounds !== 'undefined' && sounds['music'] && sounds['music'].isPlaying) sounds['music'].stop();
+    if (typeof sounds !== 'undefined' && sounds['menuMusic'] && sounds['menuMusic'].buffer && !sounds['menuMusic'].isPlaying) sounds['menuMusic'].play();
 });
 
 // --- ÚJ: PAJZS IKON MEGJELENÍTÉSE ---
@@ -1055,7 +1069,7 @@ window.renderDirectivesTab = function(tier) {
         omniDirContent.innerHTML = `
             <div style="display: flex; gap: 20px;">
                 <div style="flex: 1;">
-                    <img src="https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/5fcee7cf3f3f0e88f7fee28af836805a55f9490a/OmniCorp.jpeg" style="width: 100%; border: 2px solid #00ffff; box-shadow: 0 0 15px rgba(0,255,255,0.3); border-radius: 5px;">
+                    <img src="https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/6ff41de37442c16e94662d821116944b11451530/lore_kronos.jpeg" style="width: 100%; border: 2px solid #00ffff; box-shadow: 0 0 15px rgba(0,255,255,0.3); border-radius: 5px;">
                 </div>
                 <div style="flex: 2; color:#e0ffff; font-size:16px; line-height:1.6; font-family: 'Share Tech Mono', monospace;">
                     <h3 style="color:#00ffff; margin-bottom: 5px; margin-top: 0;">[ RENDSZERÜZENET ]</h3>
