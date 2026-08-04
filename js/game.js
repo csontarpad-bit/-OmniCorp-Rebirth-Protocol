@@ -181,6 +181,7 @@ function loadSound(name, url, volume = 1.0, isLoop = false) {
       
     });
 }
+loadSound('defibrillator', 'https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/306cb8beb9956a05ffb3ea66d00923be4cb95b5c/Sound/shock.mp3', 1.0);
 loadSound('cough', 'https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/537e7833404c4f1d16355bce8db5451231f4797e/coughing.mp3', 1.0);
 loadSound('pickup', 'https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/610723d633422339cc4d1d3384fcc2a70a98f27a/pick%20up%20item.mp3', 1.0);
 loadSound('whispers', 'https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/610723d633422339cc4d1d3384fcc2a70a98f27a/whispers.mp3', 0.0, true); 
@@ -1500,7 +1501,14 @@ function animate() {
                         skills.revive.level--;
                         playerHealth = 100 + (skills.maxHealth.level * 20);
                         invincibilityTimer = 2.0;
-                        playSound('heal');
+
+                         // --- ÚJ: FERTŐZÉS KIÉGETÉSE ÉS DROG MEGSZÜNTETÉSE ---
+                        playerInfection = Math.max(0, playerInfection - 40); 
+                        druggedTimer = 0; 
+                        document.body.classList.remove('drugged', 'infected-mild', 'infected-medium', 'infected-severe');
+                        // ---------------------------------------------------
+
+                        playSound('defibrillator');
                         if (typeof updateShopButtons === 'function') updateShopButtons();
                    } else {
                         playSound('deathScream');
@@ -2049,7 +2057,7 @@ if (sounds['whispers'] && sounds['whispers'].buffer) {
         // ==========================================
         // TÁMADÁS INDÍTÁSA (Ha elég közel vagy ÉS NEM PIHEN ÉPPEN)
         // ==========================================
-        if (distToPlayer <= attackRange && en.attackRestTimer <= 0) {
+        if (distToPlayer <= attackRange && en.attackRestTimer <= 0 && invincibilityTimer <= 0) {
             
             // --- ÚJ: BOSS SZINKRONIZÁLT TÁMADÁS ---
             if (en.type === 'boss' && en.roarTimer <= 0) {
@@ -2147,7 +2155,14 @@ if (sounds['whispers'] && sounds['whispers'].buffer) {
                         skills.revive.level--;
                         playerHealth = 100 + (skills.maxHealth.level * 20); 
                         invincibilityTimer = 2.0; 
-                        playSound('heal'); 
+
+                        // --- ÚJ: FERTŐZÉS KIÉGETÉSE ÉS DROG MEGSZÜNTETÉSE ---
+                        playerInfection = Math.max(0, playerInfection - 40); 
+                        druggedTimer = 0; 
+                        document.body.classList.remove('drugged', 'infected-mild', 'infected-medium', 'infected-severe');
+                        // ---------------------------------------------------
+
+                       playSound('defibrillator');
                         
                         const healFlash = document.getElementById('heal-flash');
                         if (healFlash) { healFlash.style.opacity = 1; setTimeout(() => healFlash.style.opacity = 0, 500); }
@@ -2206,13 +2221,30 @@ if (sounds['whispers'] && sounds['whispers'].buffer) {
         } else {
          
             
-            // --- HA MESSZE VAGY TŐLE ---
-            // A BOSS CSAK AKKOR FUT UTÁNAD, HA MÁR BEFEJEZTE AZ ORDÍTÁST!
+// --- HA MESSZE VAGY TŐLE ---
             if (en.type === 'boss' && en.roarTimer > 0) {
-                // ITT NEM CSINÁLUNK SEMMIT! A szörny beleragadt az üvöltés irányába.
-                // Ha a játékos oldalra fut, az üvöltés és a gőz a "semmibe" fog menni!
+                // A Boss itt nem csinál semmit, mert épp ordít
             } else {
-                const enemyDir = new THREE.Vector3().subVectors(new THREE.Vector3(savedCamX, 0, camera.position.z), en.mesh.position).normalize(); 
+                
+                // ==========================================
+                // ÚJ AI LOGIKA: MENEKÜLÉS (ZAVARZDOTTSÁG) ÚJRAÉLEDÉSKOR
+                // ==========================================
+                let targetPos = new THREE.Vector3(savedCamX, 0, camera.position.z);
+                let enemyDir = new THREE.Vector3();
+                
+                if (invincibilityTimer > 0) {
+                    // Ha a játékos épp újraéledt, a zombik megzavarodnak a szagtól!
+                    // Kiszámoljuk az irányt a játékosTÓL elfelé
+                    enemyDir.subVectors(en.mesh.position, targetPos).normalize();
+                    // Opcionális: a zombik kicsit le is lassulnak a zavartság miatt
+                    en.mesh.lookAt(en.mesh.position.x + enemyDir.x, 0, en.mesh.position.z + enemyDir.z);
+                } else {
+                    // Normál Támadás (Játékos FELÉ)
+                    enemyDir.subVectors(targetPos, en.mesh.position).normalize();
+                    en.mesh.lookAt(targetPos.x, 0, targetPos.z);
+                }
+                enemyDir.y = 0; 
+                // ==========================================
 
                 // FUTÁS ANIMÁCIÓ VISSZAKAPCSOLÁSA
                 if (en.attackAction && en.currentAction !== en.runAction) {
@@ -2220,8 +2252,6 @@ if (sounds['whispers'] && sounds['whispers'].buffer) {
                     en.runAction.reset().fadeIn(0.2).play();
                     en.currentAction = en.runAction;
                 }
-
-                enemyDir.y = 0; en.mesh.lookAt(savedCamX, 0, camera.position.z); 
                 
                 let sep = new THREE.Vector3();
                 for (let j = 0; j < enemies.length; j++) {
@@ -2233,7 +2263,8 @@ if (sounds['whispers'] && sounds['whispers'].buffer) {
                     }
                 }
                 
-                let mX = (enemyDir.x * en.speed) + sep.x; let mZ = (enemyDir.z * en.speed) + sep.z;
+                let mX = (enemyDir.x * en.speed) + sep.x; 
+                let mZ = (enemyDir.z * en.speed) + sep.z;
                 if (!checkWallCollision(en.mesh.position.x + mX, en.mesh.position.z, enemyRadius)) en.mesh.position.x += mX;
                 if (!checkWallCollision(en.mesh.position.x, en.mesh.position.z + mZ, enemyRadius)) en.mesh.position.z += mZ;
             }
@@ -2416,7 +2447,14 @@ for (let i = medkits.length - 1; i >= 0; i--) {
                 skills.revive.level--;
                 playerHealth = 100 + (skills.maxHealth.level * 20);
                 invincibilityTimer = 2.0;
-                playSound('heal');
+
+                // --- ÚJ: FERTŐZÉS KIÉGETÉSE ÉS DROG MEGSZÜNTETÉSE ---
+                        playerInfection = Math.max(0, playerInfection - 40); 
+                        druggedTimer = 0; 
+                        document.body.classList.remove('drugged', 'infected-mild', 'infected-medium', 'infected-severe');
+                        // ---------------------------------------------------
+
+                playSound('defibrillator');
                 if (typeof updateShopButtons === 'function') updateShopButtons();
             } else {
                 gameState = 'GAMEOVER'; 
