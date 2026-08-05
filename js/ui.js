@@ -749,6 +749,20 @@ window.updateUI = function() {
     }
     
     if(armorFill) armorFill.style.width = Math.max(0, playerArmor) + '%';
+
+    // ÚJ: STAMINA FRISSÍTÉS
+    const staminaFill = document.getElementById('stamina-fill');
+    if(staminaFill) {
+        staminaFill.style.width = Math.max(0, playerStamina) + '%';
+        // Ha kifulladtál, a csík pirosan villog!
+        if (isExhausted) {
+            staminaFill.style.background = '#ff5555';
+            staminaFill.style.boxShadow = '0 0 5px #ff0000';
+        } else {
+            staminaFill.style.background = '#00ffcc';
+            staminaFill.style.boxShadow = '0 0 5px #00ffcc';
+        }
+    }
   
     // FERTŐZÉS FRISSÍTÉSE AZONNAL
     const infNum = document.getElementById('infection-number');
