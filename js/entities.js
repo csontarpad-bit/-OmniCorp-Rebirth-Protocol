@@ -1,4 +1,3 @@
-
 // ==========================================
 // 1. GLOBÁLIS ANYAGOK ÉS GEOMETRIÁK
 // ==========================================
@@ -388,14 +387,23 @@ function spawnEnemy(x, z, isBoss = false, forceType = null) {
         }
     }
 
-    // --- ÚJ: HULLÁM ALAPÚ NEHEZEDÉS ---
+// ==========================================
+    // --- ÚJ: HULLÁM ALAPÚ NEHEZEDÉS ÉS KORLÁTOZÁS ---
+    // ==========================================
     const baseStats = difficultySettings[currentDifficulty];
     
-   // Agresszív Nehezedés: +4% minden egyes hullámnál!
-    let waveMultiplier = 1.0 + ((currentWave - 1) * 0.04);
+    // 1. Életerő és Sebzés szorzója (Ez a végtelenségig nőhet, +4% / hullám)
+    let powerMultiplier = 1.0 + ((currentWave - 1) * 0.04);
+    
+    // 2. Sebesség szorzó (MAXIMALIZÁLVA)
+    // A sebességük maximum 35%-kal (+0.35) nőhet meg az 1. hullámhoz képest!
+    let speedMultiplier = 1.0 + Math.min(((currentWave - 1) * 0.035), 0.35);
+
+    // FONTOS: Mivel a damageMult (sebzésszorzó) itt még nincs kiszámolva, előre definiáljuk:
+    let finalDamageMult = (type === 'boss' ? 3 : type === 'tank' ? 2 : 1) * powerMultiplier;
 
     // ITT KERÜL BELE A ZOMBI A TÖMBBE! Ezelőtt a sor előtt sehol nem szerepelhet 'en.'
-enemies.push({ 
+    enemies.push({ 
         type: type,
         mesh: mesh, 
         bodyHitbox: bodyHitbox, 
@@ -406,9 +414,10 @@ enemies.push({
         bodyOffsetY: bodyOffsetY, 
         headOffsetY: headOffsetY, 
         
-        health: (baseStats.health * hpMult) * waveMultiplier, 
-        speed: (baseStats.speed * speedMult) * waveMultiplier,
-        damageMult: (type === 'boss' ? 3 : type === 'tank' ? 2 : 1) * waveMultiplier,
+        // Szétválasztott szorzók használata
+        health: (baseStats.health * hpMult) * powerMultiplier, 
+        damageMult: finalDamageMult, 
+        speed: (baseStats.speed * speedMult) * speedMultiplier, 
         
         reward: reward, 
         mixer: mixer, 
@@ -422,38 +431,43 @@ enemies.push({
         currentAction: runAction,
         lifeTime: (type === 'crawler') ? 12.0 : Infinity 
     });
-}
+} 
 
 
 // ==========================================
-// 4. TÁRGYAK (LOOT) LÉTREHOZÁSA
+// 4. TÁRGYAK (LOOT) LÉTREHOZÁSA (A FÖLDÖN FEKSZENEK!)
 // ==========================================
 function spawnMedkit(x, z) {
     if (!healthModel) return; 
     const mesh = THREE.SkeletonUtils.clone(healthModel); 
-    mesh.position.set(x, 1, z); 
+    // Letesszük a földre (Y = 0.2), és esetleg picit megdöntjük, mintha ledobták volna
+    mesh.position.set(x, 0.2, z); 
+    mesh.rotation.x = Math.random() * 0.2;
+    mesh.rotation.z = Math.random() * 0.2;
     mesh.scale.set(0.6, 0.6, 0.6); 
     
-    // Fényforrás helyett a textúrát tesszük világítóvá (Optimalizált!)
     mesh.traverse((c) => {
         if (c.isMesh && c.material) {
             c.material = c.material.clone();
             c.material.emissive = new THREE.Color(0x00aaff); 
-            c.material.emissiveIntensity = 0.5;
+            c.material.emissiveIntensity = 0.3; // Halványabb, mint eddig
         }
     });
 
+    // Fontos adatokat teszünk a Mesh-be, hogy a Raycaster felismerje!
+    mesh.userData = { isLoot: true, type: 'medkit' };
+    
     scene.add(mesh);
-    medkits.push({ mesh, startY: 1, floatTime: Math.random() * Math.PI * 2 });
+    lootItems.push(mesh); // Betesszük a közös loot tömbbe!
 }
 
 function spawnAmmoBox(x, z) {
     if (!ammoModel) return; 
     const mesh = THREE.SkeletonUtils.clone(ammoModel); 
-    mesh.position.set(x, 0.8, z); 
+    mesh.position.set(x, 0.2, z); 
+    mesh.rotation.y = Math.random() * Math.PI; // Random irányba néz
     mesh.scale.set(1.8, 1.8, 1.8); 
     
-    // Fényforrás helyett a textúrát tesszük világítóvá (Optimalizált!)
     mesh.traverse((c) => {
         if (c.isMesh && c.material) {
             c.material = c.material.clone();
@@ -462,8 +476,10 @@ function spawnAmmoBox(x, z) {
         }
     });
 
+    mesh.userData = { isLoot: true, type: 'ammo' };
+
     scene.add(mesh);
-    ammoBoxes.push({ mesh, startY: 0.8, floatTime: Math.random() * Math.PI * 2 });
+    lootItems.push(mesh); // Betesszük a közös loot tömbbe!
 }
 
 // ==========================================
