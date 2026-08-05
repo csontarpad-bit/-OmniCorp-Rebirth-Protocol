@@ -870,6 +870,15 @@ window.addEventListener('keydown', (e) => {
     let key = e.key.toLowerCase(); 
     if (key in keys) keys[key] = true; 
     
+    // --- ÚJ: LOOTOLÁS GOMB (E) ---
+    if (key === 'e' && gameState === 'PLAYING') isLootingKey = true;
+    
+    // --- ÚJ: GUGGOLÁS (C) ---
+    if (key === 'c' && gameState === 'PLAYING') isCrouching = true;
+    
+    // --- ÚJ: SPRINT (SHIFT) - Csak ha nem guggol! ---
+    if (e.shiftKey && gameState === 'PLAYING' && !isCrouching) isSprinting = true;
+
     // --- ÚJ: SZÜNET GOMB (P) ---
     if (key === 'p' && gameState === 'PLAYING') {
         // Ha P-t nyomunk, kilépünk az egérzárkából.
@@ -883,7 +892,7 @@ window.addEventListener('keydown', (e) => {
         if (wpn.ammo < wpn.maxAmmo && wpn.reserve > 0) startReloading(wpn);
     }
 
-// --- ÚJ: MEDKIT HASZNÁLATA ("H" GOMB) ---
+    // --- ÚJ: MEDKIT HASZNÁLATA ("H" GOMB) ---
     if (key === 'h' && gameState === 'PLAYING') {
         let maxHP = 100 + (skills.maxHealth.level * 20);
         if (playerMedkits > 0 && playerHealth < maxHP) {
@@ -894,7 +903,7 @@ window.addEventListener('keydown', (e) => {
             // FERTŐZÉS + DROG EFFEKT (MINDEN HASZNÁLATKOR!)
             playerInfection = Math.min(100, playerInfection + 5); 
             
-            // JAVÍTÁS: Csak vizuális effektet adunk, nem indítjuk el a sebző druggedTimer-t!
+            // Csak vizuális effektet adunk, nem indítjuk el a sebző druggedTimer-t!
             document.body.classList.add('drugged');
             setTimeout(() => {
                 if (typeof druggedTimer !== 'undefined' && druggedTimer <= 0) {
@@ -909,10 +918,17 @@ window.addEventListener('keydown', (e) => {
             if (typeof updateUI === 'function') updateUI(); // AZONNALI FRISSÍTÉS
         }
     }
+}); 
+
+// A 'keyup' eseményen belül:
+window.addEventListener('keyup', (e) => { 
+    let key = e.key.toLowerCase(); 
+    if (key in keys) keys[key] = false; 
+    
+    if (key === 'e') isLootingKey = false;
+    if (key === 'c') isCrouching = false;
+    if (e.key === 'Shift') isSprinting = false;
 });
-
-
-window.addEventListener('keyup', (e) => { let key = e.key.toLowerCase(); if (key in keys) keys[key] = false; });
 
 // --- KÖZÖS ÚJRATÖLTŐ FÜGGVÉNY ---
 function startReloading(wpn) {
@@ -932,16 +948,31 @@ function startReloading(wpn) {
     }, wpn.reloadTime); 
 }
 
+// --- BIZTONSÁGOS MOZGÁS CIKLUS ---
 setInterval(() => {
     if (gameState === 'PLAYING') {
         let kmX = 0, kmZ = 0;
+        
+        // Csak akkor olvassuk a billentyűzetet, ha a játékos nincs lefagyva, vagy nem halott
         if (keys.w) kmZ = -1; 
         if (keys.s) kmZ = 1;  
         if (keys.a) kmX = -1; 
         if (keys.d) kmX = 1;  
         
-        if (kmX !== 0 || kmZ !== 0) { moveX = kmX; moveZ = kmZ; } 
-        else if (leftTouchId === null) { moveX = 0; moveZ = 0; }
+        // Kényszerített nullázás PC-n, ha épp nincs mobil-érintés!
+        // Ez megoldja az egérrel való mozgás bugot.
+        if (typeof leftTouchId !== 'undefined' && leftTouchId !== null) {
+            // Ha épp nyomva tartják a mobilos joysticket, azt NE írjuk felül!
+            // Hagyjuk, hogy a touchmove event kezelje a moveX és moveZ értékét.
+        } else {
+            // Ha NINCS mobil érintés, akkor kizárólag a billentyűzet diktál!
+            moveX = kmX; 
+            moveZ = kmZ;
+        }
+    } else {
+        // Ha nem játszunk (pl. menüben vagyunk), AZONNAL állítsunk meg minden mozgást!
+        moveX = 0;
+        moveZ = 0;
     }
 }, 16);
 
@@ -955,11 +986,15 @@ document.body.addEventListener('click', (e) => {
 });
 
 
-// NÉZELŐDÉS
+// NÉZELŐDÉS ÉS LOOT LOCK (Kamera lezárása)
 window.addEventListener('mousemove', (e) => {
     if (document.pointerLockElement === document.body && gameState === 'PLAYING') {
-        yaw -= (e.movementX || 0) * mouseSensitivity; // <--- Dinamikus érzékenység!
-        pitch -= (e.movementY || 0) * mouseSensitivity; // <--- Dinamikus érzékenység!
+        
+        // ÚJ: Ha éppen lootolunk, az egér mozgatása NEM csinál semmit! (Kamera zárva)
+        if (isLootingActive) return;
+
+        yaw -= (e.movementX || 0) * mouseSensitivity; 
+        pitch -= (e.movementY || 0) * mouseSensitivity; 
         pitch = Math.max(-Math.PI/2, Math.min(Math.PI/2, pitch));
     }
 });
@@ -1432,19 +1467,28 @@ function animate() {
         camera.position.y = 1.6 + Math.sin(clock.getElapsedTime() * 0.8) * 0.15; 
         camera.quaternion.setFromEuler(new THREE.Euler(-0.05, yaw, 0, 'YXZ')); 
         
-        radSystem.rotation.y += delta * 0.05; // A por is lassan örvénylik
+        if (typeof radSystem !== 'undefined') {
+            radSystem.rotation.y += delta * 0.05; // A por is lassan örvénylik
+        }
         renderer.render(scene, camera);
         return;
     }
-
-
 
     if (gameState !== 'PLAYING') { 
         renderer.render(scene, camera); return; 
     }
 
-    if (typeof updateUI === 'function') updateUI();
-    if (typeof updateDirectiveHUD === 'function') updateDirectiveHUD();
+    // ==========================================
+    // UI OPTIMALIZÁLÁS (Csak 10x másodpercenként frissítünk HTML-t)
+    // ==========================================
+    if (typeof window.uiTimer === 'undefined') window.uiTimer = 0;
+    window.uiTimer += delta;
+    if (window.uiTimer > 0.1) { // 0.1 másodperc = 100ms
+        if (typeof updateUI === 'function') updateUI();
+        if (typeof updateDirectiveHUD === 'function') updateDirectiveHUD();
+        window.uiTimer = 0;
+    }
+    // ==========================================
 
     // JAVÍTOTT Automata tüzelés logikája
     let wpn = weapons[currentWeaponId];
@@ -1608,15 +1652,23 @@ function animate() {
         }
     }
 
-// 2. FOLYAMATOS ZOMBI PAJZS SZÁMÍTÁS
+// ==========================================
+    // ZOMBI PAJZS OPTIMALIZÁLÁS (Csak 250ms-enként ellenőrizzük)
+    // ==========================================
+    if (typeof window.shieldTimer === 'undefined') window.shieldTimer = 0;
+    window.shieldTimer += delta;
+
+    if (window.shieldTimer > 0.25) { // 4-szer egy másodpercben
+        window.shieldTimer = 0; // Nullázzuk az időzítőt
+        
         for (let en of enemies) {
             en.shieldMult = 1.0; 
-            en.shieldType = null; // ÚJ: Eltároljuk, milyen pajzsa van
+            en.shieldType = null; 
             
             for (let p of toxicPuddles) {
                 let distSq = Math.pow(en.mesh.position.x - p.position.x, 2) + Math.pow(en.mesh.position.z - p.position.z, 2);
                 if (distSq <= 1.5) { 
-                    en.shieldType = p.userData.state; // Eltároljuk az állapotot!
+                    en.shieldType = p.userData.state; 
                     
                     if (p.userData.state === 'green') en.shieldMult = 0.8;      
                     else if (p.userData.state === 'yellow') en.shieldMult = 0.5; 
@@ -1625,6 +1677,7 @@ function animate() {
                 }
             }
         }
+    }
     }
     // --- TOXIKUS LOGIKA VÉGE ---
 
@@ -1810,11 +1863,59 @@ if (sounds['whispers'] && sounds['whispers'].buffer) {
     
     const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion); right.y = 0; right.normalize();
     
-  // Sebesség növelése a képesség alapján (+20% szintenként)
-    let speedMult = 0.15 * (1 + (skills.speed.level * 0.2));
+// ==========================================
+    // --- ÚJ: STAMINA (KIFÁRADÁS) LOGIKA ---
+    // ==========================================
+    let speedMult = 0.15 * (1 + (skills.speed.level * 0.2)); // Alap sebesség
+    
+    // Visszaszámlálók
+    if (staminaCooldown > 0) staminaCooldown -= delta;
+
+    // Ha próbál sprintelni (és nem guggol, és mozog is valamelyik irányba)
+    let isMoving = (Math.abs(moveX) > 0.1 || Math.abs(moveZ) > 0.1);
+    
+    if (isSprinting && isMoving && !isCrouching && !isExhausted && staminaCooldown <= 0) {
+        // Futás: Fogy a stamina
+        playerStamina -= delta * 25.0; // Kb. 4 másodperc sprint
+        speedMult *= 1.6;
+        
+        // Ha teljesen elfogyott a levegő: KIFULLADÁS
+        if (playerStamina <= 0) {
+            playerStamina = 0;
+            isExhausted = true;
+            staminaCooldown = 3.0; // 3 másodpercig nem tud újra futni
+            playSound('cough'); // Lihegés hang
+        }
+    } 
+    else {
+        // Ha nem fut, visszatöltődik a levegő
+        if (playerStamina < 100) {
+            playerStamina += delta * 15.0; // Lassan visszatölt
+            if (playerStamina >= 100) {
+                playerStamina = 100;
+                isExhausted = false; // Ha betelt, már nem fullad
+            }
+        }
+        
+        // Ha kifulladtál (isExhausted = true), de még nem telt vissza 100%-ra, büntetés!
+        if (isExhausted) {
+            speedMult *= 0.6; // Büntetés: Sokkal lassabb vagy a normál sétánál is!
+        }
+    }
+
+    // --- GUGGOLÁS / LOOTOLÁS LASSÍTÁS ---
+    if (isCrouching || isLootingActive) {
+        speedMult *= 0.4; 
+    }
+
+    // Kamera magasság eltolása
+    if (typeof window.crouchOffset === 'undefined') window.crouchOffset = 0;
+    let targetOffset = (isCrouching || isLootingActive) ? -0.7 : 0; 
+    window.crouchOffset = THREE.MathUtils.lerp(window.crouchOffset, targetOffset, delta * 8.0);
+
     let nextX = camera.position.x + forward.x*(moveZ*-speedMult) + right.x*(moveX*speedMult);
     let nextZ = camera.position.z + forward.z*(moveZ*-speedMult) + right.z*(moveX*speedMult);
-    
+   
     if (!checkWallCollision(nextX, camera.position.z, playerRadius)) camera.position.x = nextX;
     if (!checkWallCollision(camera.position.x, nextZ, playerRadius)) camera.position.z = nextZ;
 
@@ -1861,10 +1962,12 @@ if (sounds['whispers'] && sounds['whispers'].buffer) {
         window.stepTimer = 0.3; // Ha megállsz, azonnal lépj egyet, amint újraindulsz
     }
     
-    // --- JAVÍTÁS: A rázkódás csak ideiglenes eltolás (rendereléshez), nem módosítja a fizikai pozíciót! ---
+// --- JAVÍTÁS: A rázkódás csak ideiglenes eltolás (rendereléshez), nem módosítja a fizikai pozíciót! ---
     let savedCamX = camera.position.x;
     camera.position.x += shakeX;
-    camera.position.y = baseCamY + currentBob + shakeY;
+    
+    // JAVÍTVA: Itt adjuk hozzá a window.crouchOffset-et, így a guggolás nem lesz felülírva!
+    camera.position.y = baseCamY + window.crouchOffset + currentBob + shakeY;
 
 // --- FAGYASZTÁS COOLDOWN ÉS TEREM EFFEKTEK ---
     if (activeFreezeTimer > 0) {
@@ -1921,12 +2024,44 @@ if (sounds['whispers'] && sounds['whispers'].buffer) {
             continue; 
         }
 
-        // Ha fagyasztás van, a zombi nem mozog és az animáció is megáll!
+// ==========================================
+        // ANIMÁCIÓK FRISSÍTÉSE ÉS SEBESSÉG SZINKRONIZÁLÁSA
+        // ==========================================
         if (activeFreezeTimer > 0) {
+            // Fagyasztva: Az animáció teljesen megáll
             if (en.mixer) en.mixer.timeScale = 0; 
             continue; 
-        } else {
-            if (en.mixer) { en.mixer.timeScale = 1; en.mixer.update(delta); }
+} else {
+            // ALAP ESET: A zombi mozog, az animáció fut
+            if (en.mixer) { 
+                // A fizikai sebesség szorzója (max +35%)
+                let speedMultiplier = 1.0 + Math.min(((currentWave - 1) * 0.035), 0.35);
+                
+                // --- EGYEDI ANIMÁCIÓS SEBESSÉGEK TÍPUSONKÉNT ---
+                if (en.type === 'crawler') {
+                    // A kapálózó kis szörny maradhat a dupla sebességen
+                    en.mixer.timeScale = 2.0 * speedMultiplier; 
+                    
+                } else if (en.type === 'normal') {
+                    // VERDANT HOST (Sima zombi):
+                    // Kérted, hogy a végén gyorsabb legyen az animációja.
+                    // Adunk neki egy fix +20% (1.2) bázis gyorsítást, hogy lendületesebb legyen.
+                    en.mixer.timeScale = 1.2 * speedMultiplier; 
+                    
+                } else if (en.type === 'boss') {
+                    // NEXUS-NODE (Boss):
+                    // Kérted, hogy lassabb, nehézkesebb legyen az animációja a végén is.
+                    // Leosztjuk a sebességét, hogy nagy, lomha hústoronynak tűnjön (-30% lassítás)
+                    en.mixer.timeScale = 0.7 * speedMultiplier; 
+                    
+                } else {
+                    // MINDEN MÁS (Runner, Tank, Stalker):
+                    // Ők maradnak a sztenderd sebességnél, ha azokat jónak láttad!
+                    en.mixer.timeScale = 1.0 * speedMultiplier; 
+                }
+                
+                en.mixer.update(delta); 
+            }
         }
 
       // --- PROFESSZIONÁLIS CSONT KÖVETÉS (IRÁNYÉK-KORREKCIÓVAL!) ---
@@ -1970,7 +2105,7 @@ if (sounds['whispers'] && sounds['whispers'].buffer) {
  
        // --- ÚJ: MENEKÜLŐ (CRAWLER) LOGIKA (PATTOGÓ/KAOTIKUS) ---
         if (en.type === 'crawler') {
-            if (en.mixer) { en.mixer.timeScale = 2.0; en.mixer.update(delta); } 
+         
             
             // Ha még nincs saját iránya (velocity), adunk neki egy random irányt
             if (!en.velocity) {
@@ -2226,33 +2361,67 @@ if (sounds['whispers'] && sounds['whispers'].buffer) {
                 // A Boss itt nem csinál semmit, mert épp ordít
             } else {
                 
-                // ==========================================
-                // ÚJ AI LOGIKA: MENEKÜLÉS (ZAVARZDOTTSÁG) ÚJRAÉLEDÉSKOR
+           // ==========================================
+                // ÚJ AI LOGIKA: MENEKÜLÉS VAGY OKOS TÁMADÁS
                 // ==========================================
                 let targetPos = new THREE.Vector3(savedCamX, 0, camera.position.z);
                 let enemyDir = new THREE.Vector3();
                 
                 if (invincibilityTimer > 0) {
-                    // Ha a játékos épp újraéledt, a zombik megzavarodnak a szagtól!
-                    // Kiszámoljuk az irányt a játékosTÓL elfelé
+                    // --- 1. MENEKÜLÉS (Ha a játékos épp újjáéledt) ---
                     enemyDir.subVectors(en.mesh.position, targetPos).normalize();
-                    // Opcionális: a zombik kicsit le is lassulnak a zavartság miatt
-                    en.mesh.lookAt(en.mesh.position.x + enemyDir.x, 0, en.mesh.position.z + enemyDir.z);
+                    let targetAngle = Math.atan2(enemyDir.x, enemyDir.z); 
+                    let targetQuat = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), targetAngle);
+                    en.mesh.quaternion.slerp(targetQuat, delta * 5.0); // Lágy fordulás elfelé
+                    
                 } else {
-                    // Normál Támadás (Játékos FELÉ)
-                    enemyDir.subVectors(targetPos, en.mesh.position).normalize();
-                    en.mesh.lookAt(targetPos.x, 0, targetPos.z);
-                }
-                enemyDir.y = 0; 
-                // ==========================================
+                    // --- 2. OKOS TÁMADÁS (Navigációval) ---
+                    
+                    // Létrehozzuk a zombi saját "gondolkodás" időzítőjét, ha még nincs
+                    if (typeof en.aiThinkTimer === 'undefined') en.aiThinkTimer = 0;
+                    en.aiThinkTimer -= delta; // Visszaszámlálás
 
-                // FUTÁS ANIMÁCIÓ VISSZAKAPCSOLÁSA
+                    // Csak fél másodpercenként kérdezünk rá az útvonalra (CPU kímélés)
+                    if (en.aiThinkTimer <= 0) {
+                        // Kikérjük a legjobb irányt a külső fájlból!
+                        if (typeof AINavigation !== 'undefined') {
+                            en.lastCalculatedDir = AINavigation.getBestDirection(en, targetPos);
+                        } else {
+                            // Biztonsági tartalék, ha a külső fájl nem töltött be
+                            en.lastCalculatedDir = new THREE.Vector3().subVectors(targetPos, en.mesh.position).normalize();
+                        }
+                        en.aiThinkTimer = 0.5; // 500ms pihenő a következő gondolkodásig
+                    }
+                    
+                    // Biztonsági fék: ha valamiért üres lenne az irány
+                    if (!en.lastCalculatedDir || en.lastCalculatedDir.length() === 0) {
+                        en.lastCalculatedDir = new THREE.Vector3().subVectors(targetPos, en.mesh.position).normalize();
+                    }
+
+                    // A zombi felveszi a kiszámolt irányt
+                    enemyDir.copy(en.lastCalculatedDir);
+                    
+                    // BIZTONSÁGOS FORDULÁS (Csak az Y-tengely, azaz a gerince körül)
+                    let targetAngle = Math.atan2(enemyDir.x, enemyDir.z); 
+                    let targetQuat = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), targetAngle);
+                    
+                    // Lágy, "filmes" befordulás a cél felé
+                    en.mesh.quaternion.slerp(targetQuat, delta * 5.0); 
+                }
+                
+                // Garantáljuk, hogy a zombi ne akarjon felrepülni vagy a földbe süllyedni
+                enemyDir.y = 0; 
+                if (enemyDir.lengthSq() > 0) enemyDir.normalize();
+
+                // --- 3. FUTÁS ANIMÁCIÓ VISSZAKAPCSOLÁSA ---
                 if (en.attackAction && en.currentAction !== en.runAction) {
                     en.attackAction.fadeOut(0.2);
                     en.runAction.reset().fadeIn(0.2).play();
                     en.currentAction = en.runAction;
                 }
                 
+                // --- 4. SZEPARÁCIÓ (Egymás eltolása) ---
+                // Megakadályozza, hogy a zombik egyetlen modellbe olvadjanak össze
                 let sep = new THREE.Vector3();
                 for (let j = 0; j < enemies.length; j++) {
                     if (i !== j) {
@@ -2263,10 +2432,19 @@ if (sounds['whispers'] && sounds['whispers'].buffer) {
                     }
                 }
                 
+                // --- 5. TÉNYLEGES MOZGÁS A TÉRBEN ---
+                // Összeadjuk a haladási irányt és a taszítást
                 let mX = (enemyDir.x * en.speed) + sep.x; 
                 let mZ = (enemyDir.z * en.speed) + sep.z;
-                if (!checkWallCollision(en.mesh.position.x + mX, en.mesh.position.z, enemyRadius)) en.mesh.position.x += mX;
-                if (!checkWallCollision(en.mesh.position.x, en.mesh.position.z + mZ, enemyRadius)) en.mesh.position.z += mZ;
+                
+                // Fal-ütközés vizsgálata, mielőtt lépne
+                if (!checkWallCollision(en.mesh.position.x + mX, en.mesh.position.z, enemyRadius)) {
+                    en.mesh.position.x += mX;
+                }
+                if (!checkWallCollision(en.mesh.position.x, en.mesh.position.z + mZ, enemyRadius)) {
+                    en.mesh.position.z += mZ;
+                }
+                // ==========================================
             }
         }
 
@@ -2280,98 +2458,132 @@ if (sounds['whispers'] && sounds['whispers'].buffer) {
         }
     }
 
-// --- MEDKIT FELVÉTELE (CSAK A ZSEBBE MEGY!) ---
-for (let i = medkits.length - 1; i >= 0; i--) { 
-    const mk = medkits[i]; 
-    mk.floatTime += 0.05; 
-    mk.mesh.position.y = mk.startY + Math.sin(mk.floatTime) * 0.3; 
-    
-    if (Math.hypot(savedCamX - mk.mesh.position.x, camera.position.z - mk.mesh.position.z) < 1.5) { 
-        
-        // CSAK akkor vesszük fel, ha van hely a zsebünkben!
-        if (playerMedkits < maxMedkits) {
-            playerMedkits++;
-            
-            playSound('pickup'); // <--- AZ ÚJ HANG!
-            
-            // --- VIZUÁLIS KIÍRÁS ---
-            const lootPopup = document.getElementById('loot-popup');
-            if (lootPopup) {
-                lootPopup.innerText = "+1 GEN-STAB BEGYŰJTVE";
-                lootPopup.style.color = "#00ff00"; // Zöld szín a gyógyításnak
-                lootPopup.style.textShadow = "0 0 10px #00ff00";
-                
-                // Animáció újraindítása (felugrik és eltűnik)
-                lootPopup.style.transition = "none";
-                lootPopup.style.opacity = 1;
-                lootPopup.style.top = "60%";
-                
-                // Két tizedmásodperc múlva elindítjuk a felcsúszó, elhalványuló animációt
-                setTimeout(() => {
-                    lootPopup.style.transition = "opacity 1.5s, top 1.5s ease-out";
-                    lootPopup.style.opacity = 0;
-                    lootPopup.style.top = "50%";
-                }, 50);
-            }
-            
-            if (typeof updateUI === 'function') updateUI(); 
-            scene.remove(mk.mesh); 
-            medkits.splice(i, 1); 
-        }
-    }
-}
-    
- // --- LŐSZER FELVÉTELE ---
-    for (let i = ammoBoxes.length - 1; i >= 0; i--) { 
-        const ab = ammoBoxes[i]; 
-        ab.floatTime += 0.05; 
-        ab.mesh.position.y = ab.startY + Math.sin(ab.floatTime) * 0.2; 
-        
-        if (Math.hypot(savedCamX - ab.mesh.position.x, camera.position.z - ab.mesh.position.z) < 1.5) { 
-            
-            // ELENŐRZÉS: Van-e OLYAN fegyverünk, amibe még fér lőszer?
-            let needsAmmo = false;
-            for (let key in weapons) {
-                if (weapons[key].owned && weapons[key].reserve < weapons[key].maxReserve) {
-                    needsAmmo = true; break;
-                }
-            }
+// ==========================================
+    // --- JAVÍTOTT: IMMERZÍV LOOTOLÁS LOGIKA (Guggolással) ---
+    // ==========================================
+    const promptUI = document.getElementById('loot-interaction-prompt');
+    const progressUI = document.getElementById('loot-progress-container');
+    const progressBar = document.getElementById('loot-progress-bar');
 
-            // Ha tele van minden, BÉKÉN HAGYJUK a dobozt!
-            if (needsAmmo) {
-                playSound('pickup'); // <--- AZ ÚJ KUTATÓ/FELVEVŐ HANG
-                
+    // 1. Ha ÉPPEN lootolunk (már elkezdtük nyomni a gombot)
+    if (isLootingActive && activeLootTarget) {
+        
+        // Elrejtjük az [E] feliratot, mutatjuk a csíkot
+        if (promptUI) promptUI.classList.add('hidden');
+        if (progressUI) progressUI.classList.remove('hidden');
+        
+        // ÚJ: Kamera ráirányítása a táskára (Target Lock)
+            let lootPos = activeLootTarget.position.clone();
+            // A magasságot egy picit megemeljük, hogy ne a doboz alját nézze
+            lootPos.y += 0.2; 
+
+            // Kiszámoljuk a szöget a kamerától a loot felé
+            let targetMatrix = new THREE.Matrix4().lookAt(camera.position, lootPos, new THREE.Vector3(0,1,0));
+            let targetQuat = new THREE.Quaternion().setFromRotationMatrix(targetMatrix);
+            
+            // Finoman, automatikusan rásiklik a kamerával a táskára!
+            camera.quaternion.slerp(targetQuat, delta * 5.0);
+            
+            // FONTOS: Mivel módosítottuk a kamera quaternion-ját, frissítenünk kell a pitch/yaw értékeket is, 
+            // különben ha vége a lootolásnak, "visszaugrik" a régi irányba!
+            let euler = new THREE.Euler().setFromQuaternion(camera.quaternion, 'YXZ');
+            yaw = euler.y;
+            pitch = euler.x;
+
+        // Csík töltése
+        currentLootProgress += delta * 0.65; 
+        if (progressBar) progressBar.style.width = (currentLootProgress * 100) + '%';
+
+        // Ha a játékos felengedi az E gombot, MEGSZAKAD A FOLYAMAT!
+        if (!isLootingKey) {
+            isLootingActive = false;
+            activeLootTarget = null;
+            currentLootProgress = 0;
+            if (progressUI) progressUI.classList.add('hidden');
+        }
+
+        // HA SIKERESEN KINYITOTTA (Betelt a csík)
+        else if (currentLootProgress >= 1.0) {
+            playSound('pickup'); 
+            
+            if (activeLootTarget.userData.type === 'medkit') {
+                if (playerMedkits < maxMedkits) {
+                    playerMedkits++;
+                    showLootPopup("+1 GEN-STAB BEGYŰJTVE", "#00ff00");
+                } else {
+                    showLootPopup("INJEKCIÓS REKESZ TELE!", "#ff0000");
+                }
+            } 
+            else if (activeLootTarget.userData.type === 'ammo') {
+                if (typeof giveGlobalAmmo === 'function') giveGlobalAmmo();
+                showLootPopup("+ LŐSZER BEGYŰJTVE", "#ffcc00");
                 const ammoFlash = document.getElementById('ammo-flash'); 
                 if(ammoFlash) { ammoFlash.style.opacity = 1; setTimeout(() => ammoFlash.style.opacity = 0, 200); }
-               
-                // --- VIZUÁLIS KIÍRÁS (POP-UP) ---
-                const lootPopup = document.getElementById('loot-popup');
-                if (lootPopup) {
-                    lootPopup.innerText = "+ LŐSZER BEGYŰJTVE";
-                    lootPopup.style.color = "#ffcc00"; // Sárgás-narancs szín a lőszernek
-                    lootPopup.style.textShadow = "0 0 10px #ffcc00";
-                    
-                    // Animáció újraindítása (felugrik és eltűnik)
-                    lootPopup.style.transition = "none";
-                    lootPopup.style.opacity = 1;
-                    lootPopup.style.top = "60%";
-                    
-                    // Pici késleltetéssel elindítjuk a felcsúszó, elhalványuló animációt
-                    setTimeout(() => {
-                        lootPopup.style.transition = "opacity 1.5s, top 1.5s ease-out";
-                        lootPopup.style.opacity = 0;
-                        lootPopup.style.top = "50%";
-                    }, 50);
-                }
-
-                if (typeof giveGlobalAmmo === 'function') giveGlobalAmmo();
-    
-                if (typeof updateUI === 'function') updateUI(); 
-                scene.remove(ab.mesh); 
-                ammoBoxes.splice(i, 1); 
             }
-        } 
+
+            // Törlés a pályáról
+            scene.remove(activeLootTarget);
+            let lIdx = lootItems.indexOf(activeLootTarget);
+            if (lIdx > -1) lootItems.splice(lIdx, 1);
+            if (typeof updateUI === 'function') updateUI();
+
+            // Visszaállítás alaphelyzetbe
+            isLootingActive = false;
+            activeLootTarget = null;
+            currentLootProgress = 0;
+            isLootingKey = false; // Kényszerítjük, hogy újra fel kelljen engednie
+            if (progressUI) progressUI.classList.add('hidden');
+        }
+    } 
+    // 2. Ha NEM lootolunk éppen (Keresünk valamit a Raycasterrel)
+    else {
+        globalRaycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
+        const lootHits = globalRaycaster.intersectObjects(lootItems, true);
+
+        let hitObject = null;
+
+        if (lootHits.length > 0 && lootHits[0].distance < 3.0) {
+            let obj = lootHits[0].object;
+            while (obj.parent && !obj.userData.isLoot) obj = obj.parent;
+            if (obj.userData.isLoot) hitObject = obj;
+        }
+
+        if (hitObject) {
+            // Látunk valamit!
+            if (promptUI) promptUI.classList.remove('hidden');
+            
+            // Ha MOST nyomta le az E betűt
+            if (isLootingKey) {
+                isLootingActive = true;
+                activeLootTarget = hitObject; // Eltároljuk, így nem kell többé ránéznie!
+                currentLootProgress = 0;
+            }
+        } else {
+            // Semmit nem nézünk
+            if (promptUI) promptUI.classList.add('hidden');
+            if (progressUI) progressUI.classList.add('hidden');
+        }
     }
+
+    // Segédfüggvény a popup kiírásához (Ez maradt a régi)
+    function showLootPopup(text, color) {
+        const popup = document.getElementById('loot-popup');
+        if (popup) {
+            popup.innerText = text;
+            popup.style.color = color;
+            popup.style.textShadow = `0 0 10px ${color}`;
+            popup.style.transition = "none";
+            popup.style.opacity = 1;
+            popup.style.top = "60%";
+            
+            setTimeout(() => {
+                popup.style.transition = "opacity 1.5s, top 1.5s ease-out";
+                popup.style.opacity = 0;
+                popup.style.top = "50%";
+            }, 50);
+        }
+    }
+    // ==========================================
     
 // ==========================================
     // MUTÁNS NÖVÉNY (CSAPDA) LOGIKA
