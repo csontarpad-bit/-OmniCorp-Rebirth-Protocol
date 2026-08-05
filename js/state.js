@@ -79,6 +79,21 @@ var difficultySettings = {
     hard: { speed: 0.06, health: 4, damage: 0.8 }
 };
 
+var isCrouching = false;
+var isSprinting = false;
+var baseCamY = 1.6; // Alap magasság (Állva)
+var crouchCamY = 0.9; // Guggoló magasság
+
+var lootItems = []; 
+var isLootingKey = false; 
+var currentLootProgress = 0; 
+var isLootingActive = false; // ÚJ: Elkezdtük-e már a lootolást?
+var activeLootTarget = null; // ÚJ: Eltároljuk, melyik dobozt nyitjuk épp
+
+var playerStamina = 100; // 0-tól 100-ig
+var isExhausted = false; // Kifulladtál-e teljesen
+var staminaCooldown = 0; // Mennyi ideig nem kezdhetsz újra futni
+
 var baseCamY = 1.6;
 var velocityY = 0;
 var gravity = 0.02;
@@ -102,6 +117,11 @@ var particles = [];
 var radParticles = []; 
 var toxicPuddles = []; 
 var toxicTickTimer = 0; 
+
+var lootItems = []; // Ebben tároljuk az összes felvehető tárgyat a pályán
+var isLootingKey = false; // Nyomva tartja-e az [E] gombot
+var currentLootProgress = 0; // 0-tól 1-ig megy a csík
+var lootTarget = null; // Melyik dobozt nézi éppen
 
 // --- ÚJ: HULLÁK ÉS POOLING TÖMBÖK ---
 var deadBodies = []; // Ide kerülnek a földön fekvő hullák
