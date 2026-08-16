@@ -425,7 +425,7 @@ enemies: [
             requirementText: "FELOLDÁS: Vásárolja meg a képességet a Terminálon.",
             checkUnlock: () => playerStats.skillsBought >= 1,
             statInfo: () => `<div style="text-align:center;">AKTUÁLIS FEJLETTSÉG: ${typeof skills !== 'undefined' ? skills.healthLoot.level : 0} / 5. SZINT</div>`,
-            image: "https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/6ff41de37442c16e94662d821116944b11451530/skill_nanobot.jpeg",
+            image: "https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/47635c6ad10aaa1e3920b7eb8bb4aaee47e00e6b/Pictures/08.jpg",
              text: "KRONOS ELEMZÉS: Az alkarba integrált orvosi aljzat, amely fokozza a sejt-szintű regenerációt a gyógyszerek befogadásakor. A Verdant-alapú regenerációs szérummal kompatibilis.\n\nGALLAGHER MEGJEGYZÉSE: \"A gép ezt 'szimbiózisnak' hívja, de valójában egy ajtót nyitsz a Kaptárnak a testedbe. Megnöveli a gyógyítást, de a Gen-Stab alapja maga a spóra-gél. Minden alkalommal, amikor belovod magadba, a fertőzés egy kicsit jobban átveszi az irányítást. Lassan felemészt. Az R&D laborokban drága pénzért kimosathatod a véredből, de a liftben erre nincs esélyed. Csak akkor használd, ha muszáj!\""
         },
         {
