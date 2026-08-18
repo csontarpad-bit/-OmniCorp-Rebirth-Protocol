@@ -832,10 +832,14 @@ window.updateUI = function() {
         }
     }
 
-    // 3. FEGYVER HUD FRISSÍTÉSE (Jobb alsó sarok)
+// 3. FEGYVER HUD FRISSÍTÉSE (Jobb alsó sarok)
     let w = weapons[currentWeaponId];
     
-  
+    // --- ÚJ BIZTONSÁGI FÉK ---
+    // Ha olyan dolog van a kezünkben, ami nem "hivatalos" fegyver (pl. a Gen-Stab fecskendő),
+    // akkor egyszerűen kilépünk innen, és NEM frissítjük a fegyver HUD-ot, így sosem fagy ki a játék!
+    if (!w) return; 
+
     const weaponIcon = document.getElementById('weapon-icon-display');
     if(weaponIcon) {
         // Szöveg helyett most már a fegyver gyönyörű, átlátszó képe jelenik meg, kap egy kis ciánkék árnyékot (glow) is!
@@ -905,19 +909,39 @@ window.showHitmarker = function(isHeadshot) {
 document.getElementById('switch-weapon-btn').addEventListener('touchstart', handleWeaponSwitch);
 document.getElementById('switch-weapon-btn').addEventListener('click', handleWeaponSwitch);
 
+// --- FEGYVERVÁLTÁS ANIMÁCIÓVAL ---
 function handleWeaponSwitch(e) {
     if(e) e.preventDefault();
+    if (isWeaponBusy) return; // Nem válthatsz, ha épp lősz vagy töltesz!
+
     const keys = Object.keys(weapons);
     let currIdx = keys.indexOf(currentWeaponId);
     let nextIdx = currIdx;
+    
+    // Keresünk egy fegyvert, ami már meg van véve
     do {
         nextIdx = (nextIdx + 1) % keys.length;
     } while (!weapons[keys[nextIdx]].owned && nextIdx !== currIdx);
     
-    currentWeaponId = keys[nextIdx];
-    isReloading = false;
-    document.getElementById('reload-text').classList.add('hidden');
-    updateUI();
+    if (nextIdx === currIdx) return; // Nincs más fegyverünk
+
+    let nextWeaponId = keys[nextIdx];
+
+    // ELTESSZÜK A JELENLEGI FEGYVERT (Hide Animáció)
+    isWeaponBusy = true;
+    let hideAction = playFPSAnim(currentWeaponId, 'hide');
+    
+    let hideDuration = hideAction ? (hideAction._clip.duration * 1000) : 0;
+
+    // Ha vége az eltételnek, elővesszük az újat!
+    setTimeout(() => {
+        isWeaponBusy = false; // Feloldjuk a tiltást, hogy az equipWeapon működjön
+        isReloading = false;
+        document.getElementById('reload-text').classList.add('hidden');
+        
+        equipWeapon(nextWeaponId); // Ez lejátssza a 'take' animációt
+        updateUI();
+    }, hideDuration);
 }
 
 document.getElementById('start-game-btn').addEventListener('click', (e) => {
