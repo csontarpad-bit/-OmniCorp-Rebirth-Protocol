@@ -32,6 +32,90 @@ muzzleFlash.position.set(0.8, -0.6, -3.0);
 camera.add(muzzleFlash);
 scene.add(camera);
 
+// --- ANIMÁCIÓ LEJÁTSZÓ KÖZPONT (FINOM ÉS KEMÉNY ÁTMENETEKKEL) ---
+function playFPSAnim(weaponId, animName, fadeDuration = 0.1) {
+    let wp = loadedFPSModels[weaponId];
+    if (!wp || !wp.actions[animName]) return null;
+
+    let nextAction = wp.actions[animName];
+    
+    // Ha ugyanazt az animációt kérik, ami már fut (pl. watch loop), hagyjuk békén
+    // KIVÉTEL A LÖVÉS! Azt mindig újra kell indítani a legelejéről, hogy rángasson!
+    if (wp.currentAction === nextAction && nextAction.isRunning()) {
+        if (animName !== 'shoot') return nextAction; 
+    }
+
+    nextAction.reset();
+
+    if (wp.currentAction) {
+        if (animName === 'shoot') {
+            // Ha lövünk, AZONNALI váltás van (nincs lágy crossfade, mert elkeni a visszarúgást!)
+            wp.currentAction.stop(); 
+        } else {
+            // Minden másnál (elővétel, szuszogás) vajpuha átmenet marad
+            nextAction.crossFadeFrom(wp.currentAction, fadeDuration, true);
+        }
+    }
+
+    nextAction.play();
+    wp.currentAction = nextAction; 
+
+    return nextAction;
+}
+
+// --- ÚJ: KIKÉNYSZERÍTETT FEGYVERVÁLTÁS (Amikor kifogy a lőszer) ---
+window.forceWeaponSwitch = function(targetWeaponId) {
+    if (isWeaponBusy || currentWeaponId === targetWeaponId) return;
+    
+    isWeaponBusy = true;
+    let hideAction = playFPSAnim(currentWeaponId, 'hide');
+    let hideDuration = hideAction ? (hideAction._clip.duration * 1000) : 0;
+    
+    setTimeout(() => {
+        isWeaponBusy = false;
+        isReloading = false;
+        const rt = document.getElementById('reload-text');
+        if (rt) rt.classList.add('hidden');
+        
+        equipWeapon(targetWeaponId); // Előveszi a kést
+        if (typeof updateUI === 'function') updateUI();
+    }, hideDuration);
+}
+
+// --- FEGYVER ELŐVÉTELE (TAKE) ---
+window.equipWeapon = function(weaponId) {
+    if (isWeaponBusy) return; 
+    
+    let wData = loadedFPSModels[weaponId];
+    if (!wData) return;
+
+    if (currentWeaponMesh) currentWeaponMesh.visible = false;
+
+    isWeaponBusy = true; 
+    
+    currentWeaponId = weaponId;
+    currentWeaponMesh = wData.mesh;
+    currentWeaponMesh.visible = true;
+
+    // --- ÚJ: ALAP KOORDINÁTÁK MENTÉSE A RINGÓZÁSHOZ ---
+    // Eltároljuk a te tökéletesen beállított adataidat, hogy ahhoz képest dőljön!
+    if (!wData.basePos) wData.basePos = currentWeaponMesh.position.clone();
+    if (!wData.baseRot) wData.baseRot = currentWeaponMesh.rotation.clone();
+
+    // Lejátsszuk a "Take" animációt
+    let action = playFPSAnim(weaponId, 'take');
+    
+    if (action) {
+        let duration = action._clip.duration * 1000;
+        setTimeout(() => {
+            isWeaponBusy = false;
+            window.weaponIdleTimer = 1.0; 
+        }, duration);
+    } else {
+        isWeaponBusy = false; 
+    }
+}
+
 // ==========================================
 // ESZKÖZ-FELISMERÉS ÉS HUD BEÁLLÍTÁS
 // ==========================================
@@ -71,6 +155,7 @@ const poolLaserMat = new THREE.LineBasicMaterial({ color: 0xffff00, linewidth: 3
 for(let i = 0; i < 60; i++) { 
     let lGeo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]);
     let l = new THREE.Line(lGeo, poolLaserMat);
+    l.frustumCulled = false; // <--- EZ OLDJA MEG A PROBLÉMÁT! Sosem tűnik el indokolatlanul!
     l.visible = false;
     scene.add(l);
     laserPool.push({ mesh: l, active: false, life: 0 });
@@ -181,6 +266,10 @@ function loadSound(name, url, volume = 1.0, isLoop = false) {
       
     });
 }
+
+// --- ÚJ KÉS HANGOK ---
+loadSound('knifeHit', 'https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/b211fb47b900f276a65e2667467386ef325d70ef/Sound/Knife%20hit.mp3', 1.0);
+loadSound('heavyBreathing', 'https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/9c9e289dd7d9bc589b5f1014a8469bb8375929ea/Sound/heavy_breathing_8sec.mp3', 1.2); // Picit hangosabb, hogy átüssön a zenén!
 loadSound('defibrillator', 'https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/306cb8beb9956a05ffb3ea66d00923be4cb95b5c/Sound/shock.mp3', 1.0);
 loadSound('cough', 'https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/537e7833404c4f1d16355bce8db5451231f4797e/coughing.mp3', 1.0);
 loadSound('pickup', 'https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/610723d633422339cc4d1d3384fcc2a70a98f27a/pick%20up%20item.mp3', 1.0);
@@ -315,19 +404,114 @@ gltfLoader.load('https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebi
     crawlerModel.traverse((c) => { if(c.isMesh) c.frustumCulled = false; }); 
 });
 
-gltfLoader.load('https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/8c7271b0135d22428617169177fe45e31e6aecf7/ultrakill_alternate_revolver.glb', (gltf) => { 
-    const gunMesh = gltf.scene; 
-    gunMesh.scale.set(3, 3, 3); 
-    gunMesh.position.set(0.8, -1.2, -1.5); 
-    gunMesh.rotation.set(0, -Math.PI/2, 0); 
-    camera.add(gunMesh); 
-    if (gltf.animations.length > 0) { 
-        gunMixer = new THREE.AnimationMixer(gunMesh); 
-        gunShootAction = gunMixer.clipAction(gltf.animations[0]); 
-        gunShootAction.setLoop(THREE.LoopOnce); 
-        gunShootAction.clampWhenFinished = true; 
-    } 
-});
+// ==========================================
+// --- ÚJ AAA FPS FEGYVER RENDSZER BETÖLTÉSE ---
+// ==========================================
+
+function loadFPSWeapon(id, url, scale, posOffset, rotOffset, animMap) {
+    gltfLoader.load(url, (gltf) => {
+        let gltfScene = gltf.scene;
+        
+        let wrapper = new THREE.Group();
+        wrapper.add(gltfScene);
+
+        wrapper.scale.set(scale, scale, scale);
+        wrapper.position.set(posOffset.x, posOffset.y, posOffset.z); 
+        wrapper.rotation.set(rotOffset.x, rotOffset.y, rotOffset.z);
+        
+        gltfScene.traverse((c) => { 
+            if (c.isMesh) { 
+                let nodeName = c.name.toLowerCase();
+                if (nodeName.includes('pose') || nodeName.includes('controller') || nodeName.includes('text') || nodeName.includes('helper')) {
+                    c.visible = false; 
+                } else {
+                    c.frustumCulled = false; 
+                    c.castShadow = true; 
+                }
+            } 
+        });
+        
+        wrapper.visible = false;
+        camera.add(wrapper); 
+
+        let mixer = new THREE.AnimationMixer(gltfScene);
+        let actions = {};
+
+        if (gltf.animations && gltf.animations.length > 0) {
+            for (let animName in animMap) {
+                let index = animMap[animName];
+                let clip;
+
+                if (Array.isArray(index)) {
+                    let fps = 30; 
+                    let startFrame = Math.round(index[0] * fps);
+                    let endFrame = Math.round(index[1] * fps);
+                    clip = THREE.AnimationUtils.subclip(gltf.animations[0], animName, startFrame, endFrame, fps);
+                } else {
+                    clip = gltf.animations[index];
+                }
+
+               if (clip) {
+                    let action = mixer.clipAction(clip);
+                    action.setLoop(THREE.LoopOnce);
+                    action.clampWhenFinished = true; 
+                    
+                    if (animName === 'watch') action.timeScale = 0.6; 
+                    
+                    // --- TÖKÉLETES SZINKRON A 0.08-as TŰZGYORSASÁGHOZ ---
+                    if (id === 'rifle' && animName === 'shoot') {
+                        action.timeScale = 2.5; // Ez garantálja, hogy sosem fagy meg a keze a lövések között!
+                    }
+                    
+                    actions[animName] = action;
+                }
+            }
+        }
+
+        loadedFPSModels[id] = { mesh: wrapper, mixer: mixer, actions: actions, currentAction: null }; // <--- ÚJ: currentAction
+        console.log(`[KRONOS] Fegyver kalibrálva: ${id}`);
+        
+        if (id === currentWeaponId) equipWeapon(currentWeaponId);
+    });
+}
+
+// --- FEGYVEREK BETÖLTÉSE A TÖKÉLETES KOORDINÁTÁKKAL ---
+
+// 1. PISZTOLY
+loadFPSWeapon('pistol', 'https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/54aa4e08f9a8991f952a06b845453bf31403aff8/3DModels/fps_pistol_animated.glb', 
+    0.01, {x: 0.150, y: -0.300, z: -0.350}, {x: 0.000, y: 3.142, z: 0.000}, 
+    { shoot: [7.47, 7.80], reload: [2.13, 4.35], hide: [4.35, 4.73], take: [4.73, 5.90], watch: [5.90, 6.80] }
+);
+
+// 2. GÉPKARABÉLY (SMG)
+loadFPSWeapon('rifle', 'https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/54aa4e08f9a8991f952a06b845453bf31403aff8/3DModels/fps_animated_smg.glb', 
+    0.01, {x: 0.200, y: -0.300, z: -0.050}, {x: 0.000, y: 3.142, z: 0.000}, 
+    { shoot: [0, 0.20], reload: [0.20, 2.70], hide: [4.33, 4.65], take: [4.65, 5.91], watch: [5.91, 7.15] }
+);
+
+// 3. NEHÉZ REVOLVER (SUPER)
+loadFPSWeapon('super', 'https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/54aa4e08f9a8991f952a06b845453bf31403aff8/3DModels/revolver_animated.glb', 
+    0.01, {x: 0.250, y: -0.200, z: -0.350}, {x: 0.000, y: 3.042, z: 0.000}, 
+    { shoot: [0, 0.45], reload: [0.45, 7.40], hide: [7.40, 7.80], take: [7.80, 8.95], watch: [8.95, 9.80] }
+);
+
+// 4. SÖRÉTES PUSKA (Hozzáadva a PUMP animáció és JAVÍTOTT WATCH!)
+loadFPSWeapon('shotgun', 'https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/54aa4e08f9a8991f952a06b845453bf31403aff8/3DModels/shotgun_animated.glb', 
+    0.01, {x: 0.200, y: -0.300, z: -0.050}, {x: 0.000, y: 3.142, z: 0.000}, 
+    { shoot: [0, 0.40], pump: [0.36, 1.12], reloadStart: [1.12, 1.60], reload: [1.60, 2.60], reloadEnd: [2.60, 2.95], hide: [2.95, 3.35], take: [3.35, 4.30], watch: [4.30, 5.20] } // 5.25 helyett 5.20!
+);
+
+// 5. KÉS (Erőből Szúrás - Power Hit!)
+loadFPSWeapon('melee', 'https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/54aa4e08f9a8991f952a06b845453bf31403aff8/3DModels/knife_animated.glb', 
+    0.01, {x: 0.150, y: -0.300, z: -0.350}, {x: 0.000, y: 3.142, z: 0.000}, 
+    { watch: [0, 1.33], charge: [3.40, 3.52], strike: [3.52, 4.14], hide: [4.15, 4.48], take: [4.48, 4.83] }
+);
+
+// 6. GEN-STAB
+loadFPSWeapon('heal', 'https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/e6a5236b367eedf148605c2f1e504e6a25bd98d4/3DModels/Gen-stab.glb', 
+    1.0, {x: 0.000, y: -0.150, z: -0.100}, {x: 0.000, y: 3.142, z: 0.000}, 
+    { inject: 0 }
+);
 
 gltfLoader.load('https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/main/zombie.glb', (gltf) => { 
     zombieModel = gltf.scene; 
@@ -503,58 +687,209 @@ window.checkDirective = function(actionType, targetType) {
 }
 
 // ==========================================
-// 4. LÖVÉS ÉS IRÁNYÍTÁS LOGIKA
+// KÖZÖS ZOMBI HALÁL FÜGGVÉNY
 // ==========================================
+window.killZombie = function(en, isHeadshot) {
+    playSound(en.type === 'crawler' ? 'cry' : 'zombieDie');
+    if (en.type === 'boss' && sounds['bossAttack']) sounds['bossAttack'].stop();
+    
+    let rewardAmmount = isHeadshot ? en.reward * 1.5 : en.reward;
+    score += rewardAmmount; 
+    
+    let statType = en.type === 'hider' ? 'stalker' : en.type;
+    if (typeof playerStats !== 'undefined' && playerStats.kills) {
+        playerStats.totalDataGathered += rewardAmmount; 
+        if (playerStats.kills[statType]) {
+            if (isHeadshot) playerStats.kills[statType].head++;
+            else playerStats.kills[statType].body++;
+        }
+        if (typeof savePlayerStats === 'function') savePlayerStats();
+    }
+    
+    if (typeof checkDirective === 'function') {
+        if (isHeadshot) checkDirective('kill_head', statType);
+        else checkDirective('kill_body', statType);
+        if (en.shieldType) checkDirective('puddle_kill', en.shieldType);
+    }
 
-window.handleShoot = function(e) {
+    if (typeof createToxicPuddle === 'function') createToxicPuddle(en.mesh.position.x, en.mesh.position.z);
+    
+    const radarContainer = document.getElementById('radar');
+    if (radarContainer && en.blip && en.blip.parentNode === radarContainer) radarContainer.removeChild(en.blip);
+    
+    scene.remove(en.bodyHitbox); scene.remove(en.headHitbox);
+    let bIdx = enemyHitboxes.indexOf(en.bodyHitbox); if (bIdx > -1) enemyHitboxes.splice(bIdx, 1);
+    let hIdx = enemyHitboxes.indexOf(en.headHitbox); if (hIdx > -1) enemyHitboxes.splice(hIdx, 1);
+
+    let animDuration = 0;
+    if (en.mixer) {
+        en.mixer.timeScale = 1.0;
+        en.mixer.stopAllAction();
+    }
+    if (en.hasDeathAnim && en.deathAction) {
+        en.deathAction.reset().play();
+        animDuration = en.deathAction._clip ? en.deathAction._clip.duration : 1.5;
+    }
+    
+    deadBodies.push({
+        mesh: en.mesh, mixer: en.mixer, hasDeathAnim: en.hasDeathAnim,
+        bodyOffsetY: en.bodyOffsetY, headOffsetY: en.headOffsetY, 
+        freezeTimer: animDuration + 0.1, frozen: false, sinking: false, type: en.type
+    });
+    
+    let enIdx = enemies.indexOf(en);
+    if (enIdx > -1) enemies.splice(enIdx, 1);
+    if (typeof updateUI === 'function') updateUI();
+}
+
+ window.handleShoot = function(e) {
     if (e) { e.preventDefault(); e.stopPropagation(); }
     if (gameState !== 'PLAYING' || isReloading) return;
     
     let wpn = weapons[currentWeaponId];
 
-    if (wpn.ammo <= 0) { 
+    // --- ÚJ: LŐSZER ELFOGYÁS ÉS AUTO-VÁLTÁS ---
+    if (wpn.ammo <= 0 && currentWeaponId !== 'melee') { 
         if (wpn.reserve > 0) { 
-            startReloading(wpn); // <--- ÚJ: Csak meghívjuk az új függvényt!
-        } 
+            startReloading(wpn); 
+        } else {
+            // Megnézzük, van-e EGYÁLTALÁN bármelyik fegyverünkben lőszer
+            let hasAnyAmmo = false;
+            for (let k in weapons) {
+                if (k !== 'melee' && weapons[k].owned && (weapons[k].ammo > 0 || weapons[k].reserve > 0)) {
+                    hasAnyAmmo = true; 
+                    break;
+                }
+            }
+            // Ha az egész játékban nincs egy golyód se, automatikusan előveszi a Kést!
+            if (!hasAnyAmmo) {
+                if (typeof forceWeaponSwitch === 'function') forceWeaponSwitch('melee');
+            } else {
+                // Ha van lőszer MÁSIK fegyverben, csak kattan egyet (a játékos válthat az egerével)
+                playSound('glitch'); 
+            }
+        }
         return; 
     }
     
-    wpn.ammo--; 
-    if (typeof updateUI === 'function') updateUI(); 
-    playSound('shoot', 0.4);
+    // --- LŐSZER FOGYÁS ---
+    if (currentWeaponId !== 'melee') {
+        wpn.ammo--; 
+        playSound('shoot', 0.4);
+        
+        // ÚJ: Ha ez volt az ABSZOLÚT UTOLSÓ golyó az egész inventory-dban, a lövés után rántsd elő a kést!
+        if (wpn.ammo === 0 && wpn.reserve === 0) {
+            let hasAnyAmmo = false;
+            for (let k in weapons) {
+                if (k !== 'melee' && weapons[k].owned && (weapons[k].ammo > 0 || weapons[k].reserve > 0)) {
+                    hasAnyAmmo = true; break;
+                }
+            }
+            if (!hasAnyAmmo) {
+                setTimeout(() => {
+                    if (typeof forceWeaponSwitch === 'function') forceWeaponSwitch('melee');
+                }, 800); // Megvárjuk, amíg a fegyver visszarúg a lövéstől
+            }
+        }
+    }
     
+    if (typeof updateUI === 'function') updateUI(); 
+    
+// --- ÚJ FPS LÖVÉS ANIMÁCIÓ ---
+    if (!isWeaponBusy) {
+        // Lövésnél kikapcsoljuk a lágy átmenetet (0.01 mp), hogy villámgyors, "ütős" legyen a rántás!
+        let action = playFPSAnim(currentWeaponId, 'shoot', 0.01);
+        if (action) {
+            isWeaponBusy = true;
+            
+            // --- JAVÍTÁS: A valós időtartam! ---
+            // Az eredeti hosszt (mp) elosztjuk a te gyorsító szorzóddal (timeScale), így a zár pontosan addig tart, ameddig az animáció!
+            let duration = (action._clip.duration / action.timeScale) * 1000;
+            
+            setTimeout(() => {
+                isWeaponBusy = false;
+                window.weaponIdleTimer = 1.0; 
+            }, duration);
+        }
+    }
+
+    // --- KÜLÖNLEGES LOGIKA A KÉSHEZ (MELEE) ---
+    if (currentWeaponId === 'melee') {
+        // A kés animáció már elindult feljebb. Most várjuk a találatot!
+        setTimeout(() => {
+            globalRaycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
+            const intersects = globalRaycaster.intersectObjects(enemyHitboxes, false);
+            
+            if (intersects.length > 0 && intersects[0].distance < 3.0) { 
+                playSound('zombieHit'); 
+                let hitObj = intersects[0].object;
+                let en = enemies.find(e => e.bodyHitbox === hitObj || e.headHitbox === hitObj);
+                
+                if (en) {
+                    let isHeadshot = (hitObj.userData.type === 'head');
+                    en.health -= wpn.damage * (isHeadshot ? 3 : 1); 
+                    showHitmarker(isHeadshot);
+                    
+                    const screenBlood = document.getElementById('screen-blood');
+                    if (screenBlood) screenBlood.style.opacity = 1.0;
+
+if (en.health <= 0) {
+    killZombie(en, isHeadshot);
+}
+                }
+            }
+        }, 500); 
+        
+        return; // Itt kilépünk, hogy a késsel NE lőjjön lézert a kód!
+    }
+
+
+
+    // INNENTŐL LENT MINDEN MARAD A RÉGI A LÉZERES LÖVÉSHEZ! (mX, mY, mZ számolás)
+    let wData = loadedFPSModels[currentWeaponId];
+    let mX = wData ? wData.mesh.position.x : 0.2;
+    let mY = wData ? wData.mesh.position.y + 0.08 : -0.2; // Picit feljebb emeljük a markolattól
+    let mZ = wData ? wData.mesh.position.z - 0.7 : -1.0;  // Kitoljuk előre a cső végére
+    
+    // Torkolattűz beállítása az új helyre!
+    muzzleFlash.position.set(mX, mY, mZ);
     muzzleFlash.intensity = 8.0; 
     recoilPitch += 0.08 + (wpn.spread * 0.5); 
-    if (gunShootAction) { gunShootAction.stop(); gunShootAction.play(); }
-
-  
+    
+    // --- ÚJ FPS LÖVÉS ANIMÁCIÓ ---
+    if (!isWeaponBusy) {
+        let action = playFPSAnim(currentWeaponId, 'shoot');
+        if (action) {
+            isWeaponBusy = true;
+            let duration = action._clip.duration * 1000;
+            
+            setTimeout(() => {
+                isWeaponBusy = false;
+                window.weaponIdleTimer = 1.0; // Vár 1 másodpercet a lövés után, mielőtt elkezdi a szuszogást!
+            }, duration);
+        }
+    }
     
     const isSuper = currentWeaponId === 'super';
     
     for (let p = 0; p < wpn.pellets; p++) {
-      // 1. GARANTÁLJUK, HOGY A KAMERA LÖVÉSKOR A LEGFRISSEBB ÁLLAPOTBAN VAN
-        // (Figyelembe véve a visszarúgást és az egérmozgást!)
         camera.updateMatrixWorld(); 
 
         const spreadX = (Math.random() - 0.5) * wpn.spread;
         const spreadY = (Math.random() - 0.5) * wpn.spread;
         
-        // 2. KIKÉNYSZERÍTJÜK A LÖVEDÉK PONTOS IRÁNYÁT A 3D TÉRBEN
-        // Nem hagyatkozunk a "setFromCamera" beépített (néha lemaradó) funkciójára.
-        // Helyette manuálisan, matematikai pontossággal kiszámoljuk a cső irányát.
         const rayDirection = new THREE.Vector3(spreadX, spreadY, -1);
         rayDirection.unproject(camera);
         rayDirection.sub(camera.position).normalize();
 
-        // 3. A GLOBÁLIS RAYCASTER FRISSÍTÉSE
         globalRaycaster.set(camera.position, rayDirection);
-
-        // 4. "GOLYÓ VASTAGSÁG" (Tolerance) - Bár a Mesh-eknél ritkán kell, biztos ami biztos:
         globalRaycaster.params.Mesh.threshold = 0.1; 
 
-        // 5. ÜTKÖZÉSVIZSGÁLAT (Csak a látható / létező objektumokon)
         const intersects = globalRaycaster.intersectObjects(enemyHitboxes, false);
-        const startPoint = new THREE.Vector3(0.5, -0.5, -1).applyMatrix4(camera.matrixWorld);
+        
+        // --- ÚJ: A lövedék kiindulópontja most már a fegyvercső vége! ---
+        const startPoint = new THREE.Vector3(mX, mY, mZ).applyMatrix4(camera.matrixWorld);
+
         let endPoint = (isSuper || intersects.length === 0) ? globalRaycaster.ray.at(50, new THREE.Vector3()) : intersects[0].point;
         
         // --- JAVÍTÁS: A LÉZER ÁTSZÚRÁSA ---
@@ -572,6 +907,7 @@ window.handleShoot = function(e) {
             const cylinderGeo = new THREE.CylinderGeometry(0.2, 0.2, distance, 8);
             const cylinderMat = new THREE.MeshBasicMaterial({ color: 0x00ffff, transparent: true, opacity: 0.8 });
             const cylinder = new THREE.Mesh(cylinderGeo, cylinderMat);
+            cylinder.frustumCulled = false; // <--- Ezt is tedd hozzá!
             cylinder.position.copy(startPoint).lerp(endPoint, 0.5);
             cylinder.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), new THREE.Vector3().subVectors(endPoint, startPoint).normalize());
 scene.add(cylinder);
@@ -873,6 +1209,8 @@ window.addEventListener('keydown', (e) => {
     // --- ÚJ: LOOTOLÁS GOMB (E) ---
     if (key === 'e' && gameState === 'PLAYING') isLootingKey = true;
     
+
+
     // --- ÚJ: GUGGOLÁS (C) ---
     if (key === 'c' && gameState === 'PLAYING') isCrouching = true;
     
@@ -892,30 +1230,56 @@ window.addEventListener('keydown', (e) => {
         if (wpn.ammo < wpn.maxAmmo && wpn.reserve > 0) startReloading(wpn);
     }
 
-    // --- ÚJ: MEDKIT HASZNÁLATA ("H" GOMB) ---
-    if (key === 'h' && gameState === 'PLAYING') {
+// --- ÚJ: MEDKIT HASZNÁLATA ("H" GOMB) ANIMÁCIÓVAL ---
+    if (key === 'h' && gameState === 'PLAYING' && !isWeaponBusy && !isLootingActive) {
         let maxHP = 100 + (skills.maxHealth.level * 20);
         if (playerMedkits > 0 && playerHealth < maxHP) {
-            playerMedkits--; 
-            let healAmount = 40 * (1 + (skills.healthLoot.level * 0.2));
-            playerHealth = Math.min(maxHP, playerHealth + healAmount); 
             
-            // FERTŐZÉS + DROG EFFEKT (MINDEN HASZNÁLATKOR!)
-            playerInfection = Math.min(100, playerInfection + 5); 
+            isWeaponBusy = true; // Zároljuk a fegyvereket
             
-            // Csak vizuális effektet adunk, nem indítjuk el a sebző druggedTimer-t!
-            document.body.classList.add('drugged');
-            setTimeout(() => {
-                if (typeof druggedTimer !== 'undefined' && druggedTimer <= 0) {
-                    document.body.classList.remove('drugged');
-                }
-            }, 1500);
+            // 1. Eltesszük a jelenlegi fegyvert
+            if (currentWeaponMesh) currentWeaponMesh.visible = false;
             
-            playSound('heal'); 
-            const healFlash = document.getElementById('heal-flash');
-            if (healFlash) { healFlash.style.opacity = 1; setTimeout(() => healFlash.style.opacity = 0, 300); }
-            
-            if (typeof updateUI === 'function') updateUI(); // AZONNALI FRISSÍTÉS
+            // 2. Elővesszük a Gen-Stabot és lejátsszuk az animációt
+            let healData = loadedFPSModels['heal'];
+            if (healData) {
+                healData.mesh.visible = true;
+                let action = playFPSAnim('heal', 'inject');
+                
+                // Az animáció hossza (kb. 5.7 másodperc!)
+                let duration = action ? (action._clip.duration * 1000) : 5700;
+                
+                // --- VIZUÁLIS ÉS HANG EFFEKTEK A BEADÁSKOR ---
+                // Fél másodperccel a vége előtt kapod meg az életet (amikor ténylegesen beleszúrja)
+                setTimeout(() => {
+                    playerMedkits--; 
+                    let healAmount = 40 * (1 + (skills.healthLoot.level * 0.2));
+                    playerHealth = Math.min(maxHP, playerHealth + healAmount); 
+                    
+                    // FERTŐZÉS + DROG EFFEKT
+                    playerInfection = Math.min(100, playerInfection + 5); 
+                    document.body.classList.add('drugged');
+                    setTimeout(() => {
+                        if (typeof druggedTimer !== 'undefined' && druggedTimer <= 0) {
+                            document.body.classList.remove('drugged');
+                        }
+                    }, 1500);
+                    
+                    playSound('heal'); 
+                    const healFlash = document.getElementById('heal-flash');
+                    if (healFlash) { healFlash.style.opacity = 1; setTimeout(() => healFlash.style.opacity = 0, 300); }
+                    
+                    if (typeof updateUI === 'function') updateUI(); 
+                }, Math.max(0, duration - 500)); // Fél másodperccel a vége előtt
+
+                // 3. Amikor teljesen vége, visszavesszük a fegyvert
+                setTimeout(() => {
+                    healData.mesh.visible = false;
+                    isWeaponBusy = false; // Feloldjuk a zárolást, hogy az equipWeapon működjön
+                    
+                    equipWeapon(currentWeaponId); // Ez visszarántja a fegyvert a kezedbe
+                }, duration);
+            }
         }
     }
 }); 
@@ -930,22 +1294,157 @@ window.addEventListener('keyup', (e) => {
     if (e.key === 'Shift') isSprinting = false;
 });
 
-// --- KÖZÖS ÚJRATÖLTŐ FÜGGVÉNY ---
+// --- KÖZÖS ÚJRATÖLTŐ FÜGGVÉNY (ANIMÁCIÓVAL ÉS SÖRÉTES/REVOLVER CIKLUSSAL) ---
+window.cancelReloadRequested = false; 
+
 function startReloading(wpn) {
-    isReloading = true; 
-    playSound('reload'); 
-    document.getElementById('reload-text').classList.remove('hidden'); 
+    if (isWeaponBusy) return; 
+    if (wpn.ammo >= wpn.maxAmmo || wpn.reserve <= 0) return; 
     
-    setTimeout(() => { 
-        // Kiszámoljuk, mennyi golyó hiányzik a tárból
-        const load = Math.min(wpn.maxAmmo - wpn.ammo, wpn.reserve); 
-        wpn.ammo += load; 
-        wpn.reserve -= load; 
+    isReloading = true; 
+    isWeaponBusy = true; 
+    window.cancelReloadRequested = false; 
+    
+    document.getElementById('reload-text').classList.remove('hidden'); 
+
+    // ==========================================
+    // 1. SÖRÉTES PUSKA TÖLTÉSE (PUMPÁLÁSSAL)
+    // ==========================================
+    if (currentWeaponId === 'shotgun') {
+        let startAction = playFPSAnim('shotgun', 'reloadStart');
+        let startDur = startAction ? (startAction._clip.duration * 1000) : 500;
+
+        setTimeout(() => { reloadSingleShell(); }, startDur);
+
+        function reloadSingleShell() {
+            // Ha megszakítják a töltést (lőni akar), azonnal átugrik a Pumpálásra!
+            if (window.cancelReloadRequested || wpn.ammo >= wpn.maxAmmo || wpn.reserve <= 0 || !isReloading) {
+                playShotgunPump();
+                return;
+            }
+            
+            let action = playFPSAnim('shotgun', 'reload'); 
+            let animDuration = action ? (action._clip.duration * 1000) : 1000;
+            
+            setTimeout(() => {
+                if (!isReloading) return; 
+                wpn.ammo++; wpn.reserve--;
+                playSound('reload'); 
+                if (typeof updateUI === 'function') updateUI();
+                reloadSingleShell();
+            }, animDuration);
+        }
+
+        // ÚJ: A töltés (vagy megszakítás) végén megpumpálja a fegyvert!
+        function playShotgunPump() {
+            let pumpAction = playFPSAnim('shotgun', 'pump');
+            let pumpDur = pumpAction ? (pumpAction._clip.duration * 1000) : 760;
+            playSound('reload'); 
+            
+            setTimeout(() => {
+                isReloading = false; isWeaponBusy = false; 
+                window.weaponIdleTimer = 1.0; 
+                document.getElementById('reload-text').classList.add('hidden'); 
+                playFPSAnim('shotgun', 'watch');
+            }, pumpDur);
+        }
+    } 
+    // ==========================================
+    // 2. REVOLVER TÖLTÉSE (Pánik-megszakítással és bezárással)
+    // ==========================================
+    else if (currentWeaponId === 'super') {
+        playSound('reload'); 
+        let action = playFPSAnim('super', 'reload');
         
-        isReloading = false; 
-        if (typeof updateUI === 'function') updateUI(); 
-        document.getElementById('reload-text').classList.add('hidden'); 
-    }, wpn.reloadTime); 
+        let bulletsToLoad = Math.min(wpn.maxAmmo - wpn.ammo, wpn.reserve);
+        let timePerBullet = 5750 / 6.0; 
+        let loadedBullets = 0;
+        let requiredAnimTime = bulletsToLoad * timePerBullet;
+
+        // Időzítő, ami folyamatosan potyogtatja a golyókat a tárba
+        let reloadInterval = setInterval(() => {
+            
+            // --- HA MEGSZAKÍTJÁK A TÖLTÉST (Lőni akar a játékos) ---
+            if (window.cancelReloadRequested || !isReloading) {
+                clearInterval(reloadInterval);
+                clearTimeout(finishTimeout); 
+                
+                // MÁGIA: Odarugorjuk az animációt a tár bezárásához (5.75 mp)!
+                if (action) {
+                    action.time = 5.75; 
+                    // Pánik mód: A karakter 1.5x gyorsabban csapja be a tárat a sietség miatt!
+                    action.timeScale = 1.5; 
+                }
+                
+                // A maradék animáció (bezárás) normál esetben 1.2 másodperc.
+                // Mivel felgyorsítottuk (1.5x), elég kb. 800 milliszekundumot várni, utána lőhetünk!
+                setTimeout(() => {
+                    if (action) action.timeScale = 1.0; // Visszaállítjuk a normál sebességet a következő töltéshez
+                    finishRevolverReload();
+                }, 800);
+                
+                return;
+            }
+            
+            // Normál golyó adagolás
+            if (loadedBullets < bulletsToLoad && wpn.reserve > 0) {
+                wpn.ammo++; wpn.reserve--; loadedBullets++;
+                if (typeof updateUI === 'function') updateUI();
+            }
+        }, timePerBullet);
+
+        // BEFEJEZŐ FÜGGVÉNY
+        function finishRevolverReload() {
+            isReloading = false; 
+            isWeaponBusy = false; // Itt old fel a fegyver, most már kattinthat és lőhet a játékos!
+            window.weaponIdleTimer = 1.0; 
+            playFPSAnim('super', 'watch');
+            
+            if (typeof updateUI === 'function') updateUI(); 
+            document.getElementById('reload-text').classList.add('hidden'); 
+        }
+
+        // --- HA NORMÁLISAN, MEGSZAKÍTÁS NÉLKÜL VÉGET ÉR A TÖLTÉS ---
+        let finishTimeout = setTimeout(() => { 
+            if (isReloading) {
+                clearInterval(reloadInterval);
+                
+                if (action) {
+                    action.time = 5.75; // Biztos ami biztos, rákényszerítjük a bezárás pontjára
+                }
+                
+                // Normál sebességgel (1200ms) zárja be a tárat
+                setTimeout(() => {
+                    finishRevolverReload();
+                }, 1200);
+            }
+        }, requiredAnimTime);
+    }
+
+    // ==========================================
+    // 3. NORMÁL FEGYVEREK (Pisztoly, Karabély - Nem megszakítható)
+    // ==========================================
+    else {
+        playSound('reload'); 
+        let action = playFPSAnim(currentWeaponId, 'reload');
+        let animDuration = action ? (action._clip.duration * 1000) : wpn.reloadTime;
+
+        setTimeout(() => { 
+            if (!isReloading) return; 
+            
+            const load = Math.min(wpn.maxAmmo - wpn.ammo, wpn.reserve); 
+            wpn.ammo += load; 
+            wpn.reserve -= load; 
+            
+            isReloading = false; 
+            isWeaponBusy = false; 
+            window.weaponIdleTimer = 1.0; 
+            playFPSAnim(currentWeaponId, 'watch');
+
+            if (typeof updateUI === 'function') updateUI(); 
+            document.getElementById('reload-text').classList.add('hidden'); 
+        }, animDuration); 
+    }
 }
 
 // --- BIZTONSÁGOS MOZGÁS CIKLUS ---
@@ -987,33 +1486,144 @@ document.body.addEventListener('click', (e) => {
 
 
 // NÉZELŐDÉS ÉS LOOT LOCK (Kamera lezárása)
+window.mouseDeltaX = 0;
+window.mouseDeltaY = 0;
+
 window.addEventListener('mousemove', (e) => {
     if (document.pointerLockElement === document.body && gameState === 'PLAYING') {
         
-        // ÚJ: Ha éppen lootolunk, az egér mozgatása NEM csinál semmit! (Kamera zárva)
         if (isLootingActive) return;
 
         yaw -= (e.movementX || 0) * mouseSensitivity; 
         pitch -= (e.movementY || 0) * mouseSensitivity; 
         pitch = Math.max(-Math.PI/2, Math.min(Math.PI/2, pitch));
+        
+        // --- ÚJ: Eltároljuk az egér rántásának sebességét a fegyver dőléséhez ---
+        window.mouseDeltaX = e.movementX || 0;
+        window.mouseDeltaY = e.movementY || 0;
     }
 });
 
-// GOMBOK: LÖVÉS ÉS VÁLTÁS
+window.meleeCooldown = 0; 
+window.isChargingMelee = false; 
+window.meleeChargeTime = 0;     
+
+// GOMBOK: LÖVÉS, VÁLTÁS, KÉS-TÖLTÉS
 window.addEventListener('mousedown', (e) => {
     if (gameState !== 'PLAYING' || document.pointerLockElement !== document.body) return;
+    
+    if (isReloading && (currentWeaponId === 'shotgun' || currentWeaponId === 'super')) {
+        window.cancelReloadRequested = true; return; 
+    }
+
     if (e.button === 0) {
         isShootingBtnPressed = true; 
-        if(weapons[currentWeaponId].auto) autoShootTimer = weapons[currentWeaponId].fireRate;
-        handleShoot(); 
+        
+        // --- ÚJ KÉS LOGIKA: HÁTRAHÚZÁS (CHARGE) ---
+        if (currentWeaponId === 'melee') {
+            // --- JAVÍTÁS: Ha kifáradtál (isExhausted), nem emelheted fel a kést! ---
+            if (window.meleeCooldown > 0 || isWeaponBusy || playerStamina < 15 || isExhausted) {
+                if (playerStamina < 15 || isExhausted) playSound('cough'); // Jelezze, hogy elfogyott a szusz
+                return; 
+            }
+            
+            isWeaponBusy = true; 
+            window.isChargingMelee = true;
+            window.meleeChargeTime = 0;
+            
+            // Elindítjuk az inak feszülését/lihegést! (8 mp-es hang)
+            playSound('heavyBreathing');
+            
+            let action = playFPSAnim('melee', 'charge');
+            if (action) action.timeScale = 1.0; 
+            
+        } else {
+            if(weapons[currentWeaponId].auto) autoShootTimer = weapons[currentWeaponId].fireRate;
+            handleShoot(); 
+        }
     } else if (e.button === 2) {
         if (typeof handleWeaponSwitch === 'function') handleWeaponSwitch(e);
     }
 });
 
 window.addEventListener('mouseup', (e) => {
-    if (e.button === 0) isShootingBtnPressed = false;
+    if (e.button === 0) {
+        isShootingBtnPressed = false;
+        
+        // --- ÚJ KÉS LOGIKA: LECSAPÁS ---
+        if (currentWeaponId === 'melee' && window.isChargingMelee) {
+            window.isChargingMelee = false;
+            
+            // Leállítjuk a feszülő/lihegő hangot, ha lecsapott!
+            if (sounds['heavyBreathing'] && sounds['heavyBreathing'].isPlaying) {
+                sounds['heavyBreathing'].stop();
+            }
+            
+            executeMeleeStrike(window.meleeChargeTime); 
+        }
+    }
 });
+
+
+// ==========================================
+// A KÉS TÁMADÁS VÉGREHAJTÁSA (POWER HIT)
+// ==========================================
+window.executeMeleeStrike = function(chargeTime) {
+    let action = playFPSAnim('melee', 'strike');
+    if (action) action.timeScale = 1.5; 
+    let dur = action ? ((action._clip.duration / 1.5) * 1000) : 410; 
+    
+    // A sebzés maximuma továbbra is 2 másodpercnél van!
+    let effectiveCharge = Math.min(chargeTime, 2.0);
+    let finalDamage = 0.5 + (effectiveCharge / 2.0) * 3.5;
+    
+    // --- STAMINA FOGYÁS A LECSAPÁSKOR ---
+    // Alapból 10 Stamina a suhintás. Ha maximumon volt (2mp), akkor még 20, tehát összesen 30 Stamina egy nagy ütés!
+    let strikeCost = 10 + (effectiveCharge * 10);
+    playerStamina -= strikeCost;
+    
+    if (playerStamina <= 0) {
+        playerStamina = 0;
+        isExhausted = true;
+        staminaCooldown = 3.0;
+        playSound('cough');
+    }
+
+    setTimeout(() => {
+        globalRaycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
+        const intersects = globalRaycaster.intersectObjects(enemyHitboxes, false);
+        
+        let hitDistance = effectiveCharge > 1.0 ? 3.5 : 2.5;
+
+        if (intersects.length > 0 && intersects[0].distance < hitDistance) { 
+            playSound('zombieHit'); 
+            let hitObj = intersects[0].object;
+            let en = enemies.find(e => e.bodyHitbox === hitObj || e.headHitbox === hitObj);
+            
+            if (en) {
+                let isHeadshot = (hitObj.userData.type === 'head');
+                en.health -= finalDamage * (isHeadshot ? 3 : 1); 
+                showHitmarker(isHeadshot);
+                
+                const screenBlood = document.getElementById('screen-blood');
+                if (screenBlood) screenBlood.style.opacity = 1.0;
+
+                if (en.health <= 0) killZombie(en, isHeadshot); 
+            }
+        } else {
+            // --- JAVÍTÁS: ITT A KÉS SAJÁT SUHINTÓ HANGJA A PISZTOLY LÖVÉS HELYETT! ---
+            playSound('knifeHit', 0.0); // Tiszta pengesuhintás a levegőbe
+        }
+    }, 100); 
+
+    setTimeout(() => {
+        isWeaponBusy = false;
+        window.weaponIdleTimer = 1.0;
+        window.meleeCooldown = 0.5; 
+        playFPSAnim('melee', 'watch');
+    }, dur);
+}
+
 window.addEventListener('contextmenu', (e) => e.preventDefault());
 
 // --- BIZTONSÁGI VÉDELEM ÉS ESC (PAUSE) GOMB ELFOGÁSA ---
@@ -1260,8 +1870,8 @@ window.startGame = function() {
     // 2. Fegyverek pontos alaphelyzetbe állítása (Visszaáll a sebzés és elvesznek a megvett fegyverek)
     weapons.pistol = { name: 'Pisztoly', level: 1, damage: 1, ammo: 10, reserve: 30, maxAmmo: 10, maxReserve: 30, pellets: 1, spread: 0, reloadTime: 1500, owned: true, auto: false, fireRate: 0, image: "https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/45abc3b3555b01cf93886d8560800ff7f3c5871c/pisztoly.png" };
     weapons.shotgun = { name: 'Sörétes', level: 1, damage: 1.2, ammo: 0, reserve: 0, maxAmmo: 6, maxReserve: 24, pellets: 6, spread: 0.15, reloadTime: 2000, owned: false, auto: false, fireRate: 0, image: "https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/45abc3b3555b01cf93886d8560800ff7f3c5871c/sz%C3%B6r%C3%A9tes.png" };
-    weapons.rifle = { name: 'Gépkarabély', level: 1, damage: 0.8, ammo: 0, reserve: 0, maxAmmo: 30, maxReserve: 90, pellets: 1, spread: 0.05, reloadTime: 1800, owned: false, auto: true, fireRate: 0.12, image: "https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/df39681a8668bd04e80660051e5755ff31995ba7/g%C3%A9gkarab%C3%A9ly.png" };
-    weapons.super = { name: 'Szuper fegyver', level: 1, damage: 15, ammo: 0, reserve: 0, maxAmmo: 5, maxReserve: 15, pellets: 1, spread: 0, reloadTime: 2500, owned: false, auto: false, fireRate: 0, image: "https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/df39681a8668bd04e80660051e5755ff31995ba7/revolver.png" };
+    weapons.rifle = { name: 'Gépkarabély', level: 1, damage: 0.8, ammo: 0, reserve: 0, maxAmmo: 30, maxReserve: 90, pellets: 1, spread: 0.05, reloadTime: 1800, owned: false, auto: true, fireRate: 0.08, image: "https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/df39681a8668bd04e80660051e5755ff31995ba7/g%C3%A9gkarab%C3%A9ly.png" };
+    weapons.super = { name: 'Szuper fegyver', level: 1, damage: 15, ammo: 0, reserve: 0, maxAmmo: 6, maxReserve: 18, pellets: 1, spread: 0, reloadTime: 2500, owned: false, auto: false, fireRate: 0, image: "https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/df39681a8668bd04e80660051e5755ff31995ba7/revolver.png" };
 
     // 3. Túlélő felszerelés és Direktívák (Küldetések) nullázása
     playerMedkits = 0;
@@ -1327,6 +1937,9 @@ window.startGame = function() {
     currentWeaponId = 'pistol'; // VISSZAÁLL 1-RE!
     weapons.pistol.ammo = weapons.pistol.maxAmmo; 
     weapons.pistol.reserve = weapons.pistol.maxReserve;
+
+    // --- ÚJ: A FEGYVER TÉNYLEGES KÉZBEADÁSA INDÍTÁSKOR ---
+    if (typeof equipWeapon === 'function') equipWeapon(currentWeaponId);
     
     if (typeof updateUI === 'function') updateUI(); 
     camera.position.set(0, 1.6, 0);
@@ -1683,8 +2296,30 @@ function animate() {
 
     if (damageCooldown > 0) damageCooldown -= delta;
     if (muzzleFlash.intensity > 0) muzzleFlash.intensity = Math.max(0, muzzleFlash.intensity - delta * 30);
-    if (gunMixer) gunMixer.update(delta);
+    // --- FPS FEGYVER ANIMÁCIÓK FRISSÍTÉSE ---
+    for (let key in loadedFPSModels) {
+        if (loadedFPSModels[key].mixer) {
+            loadedFPSModels[key].mixer.update(delta);
+        }
+    }
     
+    // ==========================================
+    // --- ÚJ: VÉLETLENSZERŰ IDLE (SZUSZOGÁS) ANIMÁCIÓ ---
+    // ==========================================
+    if (!isWeaponBusy) {
+        if (typeof window.weaponIdleTimer === 'undefined') window.weaponIdleTimer = 2.0;
+        
+        window.weaponIdleTimer -= delta; // Visszaszámlálás
+        
+        if (window.weaponIdleTimer <= 0) {
+            let action = playFPSAnim(currentWeaponId, 'watch');
+            
+            // Kiszámoljuk, mikor szuszogjon legközelebb
+            let animLen = action ? (action._clip.duration / action.timeScale) : 1.0;
+            window.weaponIdleTimer = animLen + 2.0 + (Math.random() * 2.0); // Animáció hossza + 2-4 mp szünet
+        }
+    }
+
     const screenBlood = document.getElementById('screen-blood');
     if (screenBlood && parseFloat(screenBlood.style.opacity || 0) > 0) {
         screenBlood.style.opacity = Math.max(0, parseFloat(screenBlood.style.opacity) - delta * 0.4);
@@ -1849,7 +2484,7 @@ if (sounds['whispers'] && sounds['whispers'].buffer) {
     // Kamera Rázkódás, Visszarúgás és Lépkedés
     if (isNaN(pitch)) pitch = 0; if (isNaN(yaw)) yaw = 0;
     recoilPitch = Math.max(0, recoilPitch - delta * 1.5);
-    camera.quaternion.setFromEuler(new THREE.Euler(pitch + recoilPitch, yaw, 0, 'YXZ'));
+    camera.quaternion.setFromEuler(new THREE.Euler(pitch + recoilPitch, yaw, roll, 'YXZ'));
     
     let shakeX = 0, shakeY = 0;
     if (cameraShake > 0) {
@@ -1863,10 +2498,27 @@ if (sounds['whispers'] && sounds['whispers'].buffer) {
     
     const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion); right.y = 0; right.normalize();
     
-// ==========================================
-    // --- ÚJ: STAMINA (KIFÁRADÁS) LOGIKA ---
     // ==========================================
-    let speedMult = 0.15 * (1 + (skills.speed.level * 0.2)); // Alap sebesség
+    // --- KÉS TÖLTÉS (POWER HIT) SZÁMLÁLÓ ÉS EFFEKT ---
+    // ==========================================
+    if (window.isChargingMelee) {
+        window.meleeChargeTime += delta;
+        
+        // Maximalizáljuk 2.0 másodpercnél!
+        if (window.meleeChargeTime > 2.0) {
+            window.meleeChargeTime = 2.0;
+        }
+
+        // Ha elérte a maximumot (2 másodperc), a karakter keze "remegni" kezd az erőlködéstől!
+        if (window.meleeChargeTime === 2.0) {
+            cameraShake = 0.03; // Finom feszültség-remegés a képernyőn!
+        }
+    }
+
+// ==========================================
+    // --- ÚJ: STAMINA (KIFÁRADÁS) LOGIKA ÉS FOV ---
+    // ==========================================
+    let speedMult = 0.08 * (1 + (skills.speed.level * 0.2)); // Alap sebesség
     
     // Visszaszámlálók
     if (staminaCooldown > 0) staminaCooldown -= delta;
@@ -1874,34 +2526,95 @@ if (sounds['whispers'] && sounds['whispers'].buffer) {
     // Ha próbál sprintelni (és nem guggol, és mozog is valamelyik irányba)
     let isMoving = (Math.abs(moveX) > 0.1 || Math.abs(moveZ) > 0.1);
     
+    // --- 1. DINAMIKUS FOV (Sebességérzet ÉS Csőlátás) ---
+    let targetFOV = 75; // Alap látószög
+
     if (isSprinting && isMoving && !isCrouching && !isExhausted && staminaCooldown <= 0) {
         // Futás: Fogy a stamina
-        playerStamina -= delta * 25.0; // Kb. 4 másodperc sprint
-        speedMult *= 1.6;
+        playerStamina -= delta * 25.0; 
+        speedMult *= 2.2; 
+        targetFOV = 85; // Sprint kinyitja
         
         // Ha teljesen elfogyott a levegő: KIFULLADÁS
         if (playerStamina <= 0) {
-            playerStamina = 0;
-            isExhausted = true;
-            staminaCooldown = 3.0; // 3 másodpercig nem tud újra futni
-            playSound('cough'); // Lihegés hang
+            playerStamina = 0; isExhausted = true; staminaCooldown = 3.0;
+            playSound('cough'); 
         }
     } 
     else {
-        // Ha nem fut, visszatöltődik a levegő
-        if (playerStamina < 100) {
-            playerStamina += delta * 15.0; // Lassan visszatölt
-            if (playerStamina >= 100) {
-                playerStamina = 100;
-                isExhausted = false; // Ha betelt, már nem fullad
+        // --- JAVÍTÁS: Ha tölti a kést, NEM regenerálódik a Stamina! ---
+        if (playerStamina < 100 && !window.isChargingMelee) { 
+            playerStamina += delta * 15.0; 
+            if (playerStamina >= 100) { playerStamina = 100; isExhausted = false; }
+        }
+        if (isExhausted) speedMult *= 0.6; 
+    }
+
+    // --- ÚJ: CSŐLÁTÁS (TUNNEL VISION) A KÉSNÉL ---
+    if (window.isChargingMelee) {
+        // Ahogy múlik az idő, a látószög 75-ről lemegy egészen 55 fokra (Ráközelít a célra)
+        targetFOV = 75 - Math.min(window.meleeChargeTime * 10, 20);
+    }
+
+    // FOV Lágy átmenete és frissítése a kamerán
+    camera.fov = THREE.MathUtils.lerp(camera.fov, targetFOV, delta * 5.0);
+    camera.updateProjectionMatrix(); // Ezt kötelező meghívni, ha a fov változik!
+
+    // ==========================================
+    // --- KÉS TÖLTÉS (POWER HIT) SZÁMLÁLÓ ÉS STAMINA LIMIT ---
+    // ==========================================
+    if (window.isChargingMelee) {
+        window.meleeChargeTime += delta;
+        
+        // Tartás közben is folyamatosan (kicsit) fogy a stamina (5 Stamina másodpercenként)
+        playerStamina -= delta * 5.0;
+
+        // HA ELFOGY A STAMINA -> KÉNYSZERÍTETT LEÁLLÁS (Nincs ütés)
+        if (playerStamina <= 0) {
+            window.isChargingMelee = false;
+            
+            // Hang leállítása
+            if (sounds['heavyBreathing'] && sounds['heavyBreathing'].isPlaying) {
+                sounds['heavyBreathing'].stop();
+            }
+
+            // Kifulladás garantálása
+            playerStamina = 0;
+            isExhausted = true;
+            staminaCooldown = 3.0;
+            playSound('cough');
+
+            // --- LÁGY VISSZAENGEDÉS ---
+            playFPSAnim('melee', 'watch', 1.0);
+
+            // A fegyver (kéz) zárolva marad erre az 1 másodpercre
+            setTimeout(() => {
+                isWeaponBusy = false;
+                window.meleeCooldown = 0.5; // Picit kell várnia, mielőtt újra próbálkozhat
+            }, 1000);
+            
+        } 
+        // HA MÉG TARTJA ÉS BÍRJA SZUSSZAL
+        else {
+            if (window.meleeChargeTime >= 2.0) {
+                cameraShake = 0.02; // Finom feszültség-remegés a képernyőn a 2. másodperc után folyamatosan!
             }
         }
-        
-        // Ha kifulladtál (isExhausted = true), de még nem telt vissza 100%-ra, büntetés!
-        if (isExhausted) {
-            speedMult *= 0.6; // Büntetés: Sokkal lassabb vagy a normál sétánál is!
-        }
     }
+
+   // --- 2. KAMERA DŐLÉS (Strafe Tilt + Lépés Dőlés) ---
+    let targetRoll = 0;
+    if (isMoving && !isLootingActive) {
+        // Oldalazás miatti dőlés
+        if (keys.a) targetRoll = 0.02;  
+        if (keys.d) targetRoll = -0.02; 
+        if (isSprinting) targetRoll *= 1.5; 
+        
+        // --- ÚJ: Szinkronizált lépés-dőlés! ---
+        // Ahogy lépegetsz, a karakter teste finoman dülöngél balra-jobbra a bobTime alapján
+        targetRoll += Math.cos(bobTime) * (isSprinting ? 0.015 : 0.008);
+    }
+    roll = THREE.MathUtils.lerp(roll, targetRoll, delta * 8.0);
 
     // --- GUGGOLÁS / LOOTOLÁS LASSÍTÁS ---
     if (isCrouching || isLootingActive) {
@@ -1922,32 +2635,40 @@ if (sounds['whispers'] && sounds['whispers'].buffer) {
     velocityY -= gravity; baseCamY += velocityY; 
     if (baseCamY < 1.6) { baseCamY = 1.6; velocityY = 0; }
     
-// --- LÉPÉSHANGOK ÉS KAMERA RUGÓZÁS (BOBBING) ---
+// --- LÉPÉSHANGOK ÉS KAMERA RUGÓZÁS (BOBBING) TÖKÉLETES SZINKRON ---
     const speed = Math.hypot(moveX, moveZ); 
-    
-    // Globális változó a lépés-időzítéshez (ha még nincs, létrehozzuk menet közben)
-    if (typeof window.stepTimer === 'undefined') window.stepTimer = 0;
 
     if (speed > 0.05) { 
-        bobTime += delta * 12; 
-        currentBob = Math.sin(bobTime) * 0.06; 
+        let bobSpeedMult = 1.0;
+        // Mivel az alapséta lassabb lett, a sprint animációnak jobban fel kell pörögnie, hogy passzoljon a 2.2-es sebességhez!
+        if (isSprinting && !isExhausted) bobSpeedMult = 1.8;     
+        else if (isExhausted) bobSpeedMult = 0.6;                
+        else if (isCrouching || isLootingActive) bobSpeedMult = 0.5; 
         
-        // Lépés ritmus számolása
-        window.stepTimer += delta * (1 + (skills.speed.level * 0.2)); // Ha gyorsabb vagy, gyorsabban ketyeg!
+        // Elmentjük a régi fázist, hogy tudjuk, mikor léptünk egyet
+        let prevBobPhase = bobTime % Math.PI;
         
-        // Minden ~0.4 másodpercnyi futás után lépünk egyet
-        if (window.stepTimer > 0.4) {
+        // JAVÍTÁS: A Lépés ritmusa 10 helyett lecsökkentve 7-re!
+        // Így sokkal kimértebb, komótosabb lesz a lépéshang és a fegyver ringózása!
+        bobTime += delta * 7.0 * bobSpeedMult * (1 + (skills.speed.level * 0.2)); 
+        
+        let currentBobPhase = bobTime % Math.PI;
+
+        // A kamera Y tengelyű le-fel rugózása (Mindig lefelé indul, mint a valódi lépésnél)
+        currentBob = -Math.abs(Math.sin(bobTime)) * 0.06; 
+        
+        // --- TÖKÉLETES HANG SZINKRON ---
+        // Ha a fázis átfordul (véget ér egy lépés és a láb földet ér), CSATTAN a hang!
+        if (currentBobPhase < prevBobPhase) {
             playSound('footstep');
-            window.stepTimer = 0;
             
-            // Extrának egy pici port is kavarhatunk a lábunk alatt!
+            // Pici por kavarása a láb alatt
             for (let i = 0; i < 2; i++) {
                 let p = bloodPool.find(part => !part.active);
                 if (p) {
                     p.active = true; p.life = 0.5;
-                    p.mesh.position.set(camera.position.x, 0, camera.position.z);
+                    p.mesh.position.set(camera.position.x, 0.05, camera.position.z);
                     p.mesh.scale.setScalar(0.5); 
-                    // Fekete/Szürke por szín
                     p.mesh.material.color.setHex(0x222222);
                     p.vx = (Math.random() - 0.5) * 0.1; 
                     p.vy = Math.random() * 0.1;    
@@ -1958,16 +2679,110 @@ if (sounds['whispers'] && sounds['whispers'].buffer) {
         }
     } 
     else { 
-        currentBob += (0 - currentBob) * delta * 10; 
-        window.stepTimer = 0.3; // Ha megállsz, azonnal lépj egyet, amint újraindulsz
+        // Visszaállás nyugalmi állapotba
+        currentBob = THREE.MathUtils.lerp(currentBob, 0, delta * 10); 
     }
     
-// --- JAVÍTÁS: A rázkódás csak ideiglenes eltolás (rendereléshez), nem módosítja a fizikai pozíciót! ---
+    // Rázkódás és a kamera végső pozíciója
     let savedCamX = camera.position.x;
     camera.position.x += shakeX;
-    
-    // JAVÍTVA: Itt adjuk hozzá a window.crouchOffset-et, így a guggolás nem lesz felülírva!
     camera.position.y = baseCamY + window.crouchOffset + currentBob + shakeY;
+
+    // ==========================================
+    // --- ÚJ: FEGYVER DŐLÉS, SZINKRON BOB ÉS FAL-VISSZAHÚZÁS ---
+    // ==========================================
+    if (currentWeaponMesh && loadedFPSModels[currentWeaponId].basePos) {
+        let wData = loadedFPSModels[currentWeaponId];
+        
+        // 1. Egér rántás csillapítása (Sway)
+        if (typeof window.mouseDeltaX === 'undefined') window.mouseDeltaX = 0;
+        if (typeof window.mouseDeltaY === 'undefined') window.mouseDeltaY = 0;
+        window.mouseDeltaX = THREE.MathUtils.lerp(window.mouseDeltaX, 0, delta * 15);
+        window.mouseDeltaY = THREE.MathUtils.lerp(window.mouseDeltaY, 0, delta * 15);
+
+        if (typeof window.meleeCooldown === 'undefined') window.meleeCooldown = 0;
+if (window.meleeCooldown > 0) window.meleeCooldown -= delta;
+
+        let swayX = window.mouseDeltaY * 0.0005; // Fel-le
+        let swayY = window.mouseDeltaX * 0.0005; // Jobbra-balra
+
+       // 2. TÖKÉLETESEN SZINKRONIZÁLT KÉZ RINGÓZÁS ÉS LÉLEGZÉS
+        if (typeof window.breathTime === 'undefined') window.breathTime = 0;
+        
+        // A lélegzés sebessége (kifulladva sokkal szaporább!)
+        let breathSpeed = isExhausted ? 5.0 : 1.5; 
+        window.breathTime += delta * breathSpeed;
+
+        let weaponBobX = 0;
+        let weaponBobY = 0;
+        
+        if (speed > 0.05) { 
+            // --- MOZGÁS KÖZBEN: Lépés ringózás ---
+            weaponBobX = Math.cos(bobTime) * 0.015; 
+            weaponBobY = Math.abs(Math.sin(bobTime)) * 0.02; 
+            
+            if (isSprinting && !isExhausted) {
+                weaponBobX *= 2.0;
+                weaponBobY *= 2.0;
+            } else if (isExhausted || isCrouching || isLootingActive) {
+                weaponBobX *= 0.5; weaponBobY *= 0.5;
+            }
+        } else {
+            // --- ÁLLÓ HELYZETBEN: Lélegzés (Idle Sway) ---
+            // Kifulladva mélyebbeket lélegzik (jobban mozog a fegyver le-fel)
+            let breathIntensity = isExhausted ? 0.01 : 0.003;
+            
+            // Finom fel-le mozgás a tüdő tágulása miatt
+            weaponBobY = Math.sin(window.breathTime) * breathIntensity; 
+            
+            // Nagyon minimális, lassú oldalirányú billegés, hogy ne legyen gépies
+            weaponBobX = Math.cos(window.breathTime * 0.5) * (breathIntensity * 0.4); 
+        }
+
+        // ==========================================
+        // 3. TARKOV STÍLUSÚ FAL-VISSZAHÚZÁS (Wall-Collision)
+        // ==========================================
+        let wallPullbackZ = 0;  // Mennyire nyomja a mellkasához a fegyvert
+        let wallPullbackRotX = 0; // Mennyire emeli fel a csövét
+        
+        // Csak a fegyvereknél számoljuk (A Gen-Stabot ne rángassa)
+        if (currentWeaponId !== 'heal') {
+            // Lővünk egy képzeletbeli lézert egyenesen előre a falakra!
+            let camPos = camera.position.clone();
+            let rayDir = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+            rayDir.y = 0; rayDir.normalize();
+            
+            let wallRay = new THREE.Ray(camPos, rayDir);
+            let closestDist = Infinity;
+
+            // Végignézzük az összes fal hitboxát
+            for (let i = 0; i < wallHitboxes.length; i++) {
+                let intersect = wallRay.intersectBox(wallHitboxes[i], new THREE.Vector3());
+                if (intersect) {
+                    let dist = camPos.distanceTo(intersect);
+                    if (dist < closestDist) closestDist = dist;
+                }
+            }
+
+            // Ha 1.2 méternél közelebb van a fal
+            if (closestDist < 1.2) {
+                // Minél közelebb mész, annál jobban felhúzza! (0.0 -tól 1.0-ig terjedő szorzó)
+                let intensity = 1.0 - (closestDist / 1.2); 
+                
+                wallPullbackZ = intensity * 0.5;   // Hátratolja a kamerához (Z tengely +)
+                wallPullbackRotX = intensity * 1.2; // Felhajtja a csövet (X tengely forgatás)
+            }
+        }
+
+        // 4. ALKALMAZÁK (Az Alapértékekhez adjuk a Sway, a Bob ÉS a Fal-ütközés értékeket)
+        currentWeaponMesh.rotation.x = THREE.MathUtils.lerp(currentWeaponMesh.rotation.x, wData.baseRot.x - swayX + wallPullbackRotX, delta * 10);
+        currentWeaponMesh.rotation.y = THREE.MathUtils.lerp(currentWeaponMesh.rotation.y, wData.baseRot.y - swayY, delta * 10);
+        
+        currentWeaponMesh.position.x = THREE.MathUtils.lerp(currentWeaponMesh.position.x, wData.basePos.x + weaponBobX, delta * 10);
+        // Figyelem: A fal-visszahúzást a Z tengelyhez is hozzáadjuk!
+        currentWeaponMesh.position.z = THREE.MathUtils.lerp(currentWeaponMesh.position.z, wData.basePos.z + wallPullbackZ, delta * 10);
+        currentWeaponMesh.position.y = THREE.MathUtils.lerp(currentWeaponMesh.position.y, wData.basePos.y - weaponBobY, delta * 10);
+    }
 
 // --- FAGYASZTÁS COOLDOWN ÉS TEREM EFFEKTEK ---
     if (activeFreezeTimer > 0) {
@@ -3045,3 +3860,41 @@ if (skipBtn) {
 
 // Játékciklus Indítása
 animate();
+
+
+
+// ==========================================
+// DEV TOOL: FEGYVER KALIBRÁLÓ (Később kitörölheted)
+// Használat játék közben (PC): 
+// Nyilak: X és Z tengely (Előre-hátra, Jobbra-balra tologatás)
+// PageUp / PageDown: Y tengely (Fel-le tologatás)
+// M és N gombok: Forgatás (Y tengely)
+// ==========================================
+window.addEventListener('keydown', (e) => {
+    if (!currentWeaponMesh || gameState !== 'PLAYING') return;
+    
+    let step = 0.05; // Finom lépték
+    let rotStep = 0.1;
+    
+    if (e.key === 'ArrowUp') currentWeaponMesh.position.z -= step;
+    if (e.key === 'ArrowDown') currentWeaponMesh.position.z += step;
+    if (e.key === 'ArrowLeft') currentWeaponMesh.position.x -= step;
+    if (e.key === 'ArrowRight') currentWeaponMesh.position.x += step;
+    if (e.key === 'PageUp') currentWeaponMesh.position.y += step;
+    if (e.key === 'PageDown') currentWeaponMesh.position.y -= step;
+    
+    if (e.key === 'm') currentWeaponMesh.rotation.y += rotStep;
+    if (e.key === 'n') currentWeaponMesh.rotation.y -= rotStep;
+    
+    // Növelés / Kicsinyítés (K és L gombok)
+    if (e.key === 'k') currentWeaponMesh.scale.multiplyScalar(1.1);
+    if (e.key === 'l') currentWeaponMesh.scale.multiplyScalar(0.9);
+
+    // Kiírjuk a konzolra az aktuális, tökéletes értékeket!
+    if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','PageUp','PageDown','m','n','k','l'].includes(e.key)) {
+        console.log(`--- TÖKÉLETES BEÁLLÍTÁSOK EHHZ: ${currentWeaponId} ---`);
+        console.log(`Scale: ${currentWeaponMesh.scale.x.toFixed(3)}`);
+        console.log(`posOffset: {x: ${currentWeaponMesh.position.x.toFixed(3)}, y: ${currentWeaponMesh.position.y.toFixed(3)}, z: ${currentWeaponMesh.position.z.toFixed(3)}}`);
+        console.log(`rotOffset: {x: ${currentWeaponMesh.rotation.x.toFixed(3)}, y: ${currentWeaponMesh.rotation.y.toFixed(3)}, z: ${currentWeaponMesh.rotation.z.toFixed(3)}}`);
+    }
+});
