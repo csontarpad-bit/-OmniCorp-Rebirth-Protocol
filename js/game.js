@@ -1206,57 +1206,49 @@ window.addEventListener('keydown', (e) => {
     let key = e.key.toLowerCase(); 
     if (key in keys) keys[key] = true; 
     
-    // --- ÚJ: LOOTOLÁS GOMB (E) ---
+    // --- LOPAKODÁS / INTERAKCIÓ ---
     if (key === 'e' && gameState === 'PLAYING') isLootingKey = true;
-    
-
-
-    // --- ÚJ: GUGGOLÁS (C) ---
     if (key === 'c' && gameState === 'PLAYING') isCrouching = true;
-    
-    // --- ÚJ: SPRINT (SHIFT) - Csak ha nem guggol! ---
     if (e.shiftKey && gameState === 'PLAYING' && !isCrouching) isSprinting = true;
 
-    // --- ÚJ: SZÜNET GOMB (P) ---
-    if (key === 'p' && gameState === 'PLAYING') {
-        // Ha P-t nyomunk, kilépünk az egérzárkából.
-        // Ez automatikusan meghívja a pointerlockchange eseményt, ami betölti a Szünet menüt!
-        document.exitPointerLock(); 
+// --- SZÜNET GOMB (BACKSPACE ODA-VISSZA KAPCSOLÁS) ---
+    if (key === 'backspace') {
+        e.preventDefault(); // Megakadályozzuk a böngésző "vissza" funkcióját
+        
+        if (gameState === 'PLAYING') {
+            document.exitPointerLock(); // Visszaadjuk az egeret
+            pauseGame(); // Megállítjuk a játékot
+        } 
+        else if (gameState === 'PAUSED') {
+            resumeGame(); // Folytatjuk a játékot (ez automatikusan visszaveszi az egeret és eltünteti a menüt!)
+        }
     }
     
-    // --- MANUÁLIS ÚJRATÖLTÉS ("R" GOMB) ---
+    // --- MANUÁLIS ÚJRATÖLTÉS ("R") ---
     if (key === 'r' && gameState === 'PLAYING' && !isReloading) {
         let wpn = weapons[currentWeaponId];
         if (wpn.ammo < wpn.maxAmmo && wpn.reserve > 0) startReloading(wpn);
     }
 
-// --- ÚJ: MEDKIT HASZNÁLATA ("H" GOMB) ANIMÁCIÓVAL ---
-    if (key === 'h' && gameState === 'PLAYING' && !isWeaponBusy && !isLootingActive) {
+    // --- ÚJ: MEDKIT HASZNÁLATA ("Q" GOMB) ---
+    if (key === 'q' && gameState === 'PLAYING' && !isWeaponBusy && !isLootingActive) {
         let maxHP = 100 + (skills.maxHealth.level * 20);
         if (playerMedkits > 0 && playerHealth < maxHP) {
             
-            isWeaponBusy = true; // Zároljuk a fegyvereket
-            
-            // 1. Eltesszük a jelenlegi fegyvert
+            isWeaponBusy = true; 
             if (currentWeaponMesh) currentWeaponMesh.visible = false;
             
-            // 2. Elővesszük a Gen-Stabot és lejátsszuk az animációt
             let healData = loadedFPSModels['heal'];
             if (healData) {
                 healData.mesh.visible = true;
                 let action = playFPSAnim('heal', 'inject');
-                
-                // Az animáció hossza (kb. 5.7 másodperc!)
                 let duration = action ? (action._clip.duration * 1000) : 5700;
                 
-                // --- VIZUÁLIS ÉS HANG EFFEKTEK A BEADÁSKOR ---
-                // Fél másodperccel a vége előtt kapod meg az életet (amikor ténylegesen beleszúrja)
                 setTimeout(() => {
                     playerMedkits--; 
                     let healAmount = 40 * (1 + (skills.healthLoot.level * 0.2));
                     playerHealth = Math.min(maxHP, playerHealth + healAmount); 
                     
-                    // FERTŐZÉS + DROG EFFEKT
                     playerInfection = Math.min(100, playerInfection + 5); 
                     document.body.classList.add('drugged');
                     setTimeout(() => {
@@ -1268,21 +1260,38 @@ window.addEventListener('keydown', (e) => {
                     playSound('heal'); 
                     const healFlash = document.getElementById('heal-flash');
                     if (healFlash) { healFlash.style.opacity = 1; setTimeout(() => healFlash.style.opacity = 0, 300); }
-                    
                     if (typeof updateUI === 'function') updateUI(); 
-                }, Math.max(0, duration - 500)); // Fél másodperccel a vége előtt
+                }, Math.max(0, duration - 500)); 
 
-                // 3. Amikor teljesen vége, visszavesszük a fegyvert
                 setTimeout(() => {
                     healData.mesh.visible = false;
-                    isWeaponBusy = false; // Feloldjuk a zárolást, hogy az equipWeapon működjön
-                    
-                    equipWeapon(currentWeaponId); // Ez visszarántja a fegyvert a kezedbe
+                    isWeaponBusy = false; 
+                    equipWeapon(currentWeaponId); 
                 }, duration);
             }
         }
     }
-}); 
+
+    // --- ÚJ: FAGYASZTÁS ("T" GOMB) ---
+    if (key === 't' && gameState === 'PLAYING') {
+        if (typeof triggerFreeze === 'function') triggerFreeze();
+    }
+
+    // --- ÚJ: FEGYVERVÁLTÁS SZÁMOKKAL (0-4) ---
+    if (gameState === 'PLAYING' && !isWeaponBusy) {
+        let requestedWeapon = null;
+        if (key === '0') requestedWeapon = 'melee';
+        if (key === '1') requestedWeapon = 'pistol';
+        if (key === '2') requestedWeapon = 'shotgun';
+        if (key === '3') requestedWeapon = 'rifle';
+        if (key === '4') requestedWeapon = 'super';
+
+        // Csak akkor váltunk, ha létezik, megvettük, és nem az van a kezünkben
+        if (requestedWeapon && requestedWeapon !== currentWeaponId && weapons[requestedWeapon] && weapons[requestedWeapon].owned) {
+            forceWeaponSwitch(requestedWeapon);
+        }
+    }
+}); // Keydown vége
 
 // A 'keyup' eseményen belül:
 window.addEventListener('keyup', (e) => { 
@@ -1626,14 +1635,16 @@ window.executeMeleeStrike = function(chargeTime) {
 
 window.addEventListener('contextmenu', (e) => e.preventDefault());
 
-// --- BIZTONSÁGI VÉDELEM ÉS ESC (PAUSE) GOMB ELFOGÁSA ---
-document.addEventListener('pointerlockchange', () => {
-    if (document.pointerLockElement !== document.body) {
-        isShootingBtnPressed = false; // Lövés leáll
-        
-        // HA JÁTÉK KÖZBEN NYOMUNK ESC-T (Nem a boltban vagyunk!), AKKOR SZÜNET!
-        if (gameState === 'PLAYING') {
-            pauseGame();
+// BIZTONSÁGOS AKTIVÁLÁS: DEV MENU (DELETE GOMB)
+window.addEventListener('keydown', (e) => {
+    if (e.key === 'Delete') { // <--- KICSERÉLVE DELETE-RE!
+        const devMenuEl = document.getElementById('dev-menu');
+        if (devMenuEl) {
+            if (devMenuEl.classList.contains('hidden')) {
+                devMenuEl.classList.remove('hidden');
+            } else {
+                devMenuEl.classList.add('hidden');
+            }
         }
     }
 });
