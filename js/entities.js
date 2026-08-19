@@ -295,6 +295,7 @@ function spawnEnemy(x, z, isBoss = false, forceType = null) {
    // A 'mixer' már létezik feljebb, így itt már nem kell újra létrehozni!
     let runAction = null; let attackAction = null; let deathAction = null; 
     let hasDeathAnim = false; // <--- EZ HIÁNYZOTT!
+    let comboActions = []; // <--- ÚJ: A Juggernaut kombó ütéseihez
 
     if (anims && anims.length > 0) {
         if (type === 'runner') {
@@ -304,7 +305,19 @@ function spawnEnemy(x, z, isBoss = false, forceType = null) {
         } 
         else if (type === 'tank') {
             runAction = mixer.clipAction(anims.length > 21 ? anims[21] : anims[0]); 
-            attackAction = mixer.clipAction(anims.length > 0 ? anims[0] : anims[0]);
+            attackAction = mixer.clipAction(anims.length > 0 ? anims[0] : anims[0]); // Biztonsági alap
+            
+            // --- ÚJ: JUGGERNAUT KOMBÓ (Első 3 animáció betöltése) ---
+            if (anims.length > 0) comboActions.push(mixer.clipAction(anims[0]));
+            if (anims.length > 1) comboActions.push(mixer.clipAction(anims[1]));
+            if (anims.length > 2) comboActions.push(mixer.clipAction(anims[2]));
+            
+            // Beállítjuk, hogy a kombó ütések ne loopoljanak, csak egyszer fussanak le!
+            comboActions.forEach(action => {
+                action.setLoop(THREE.LoopOnce);
+                action.clampWhenFinished = true;
+            });
+
             if (anims.length > 11) { deathAction = mixer.clipAction(anims[11]); hasDeathAnim = true; } 
         }
         else if (type === 'boss') {
@@ -424,12 +437,22 @@ function spawnEnemy(x, z, isBoss = false, forceType = null) {
         blip: blip,
         runAction: runAction, 
         attackAction: attackAction, 
+
+        // --- ÚJ: COMBO ÉS IDŐZÍTŐ VÁLTOZÓK (BIZTONSÁGI ALAPÉRTÉKEKKEL) ---
+        comboActions: typeof comboActions !== 'undefined' ? comboActions : [], 
+        comboStep: 0,               
+        isAttacking: false,         
+        attackAnimTimer: 0,         
+        hitFrameTime: 0,            
+        hasDealtDamage: false,      
+        // ------------------------------------
+
         deathAction: deathAction, 
         hasDeathAnim: hasDeathAnim, 
         roarTimer: 0,
-        frozen: false, // <--- ÚJ: BIZTOSÍTJUK, HOGY NE LEGYEN LEFAGYVA ÚJRAÉLEDÉSKOR!
+        frozen: false, 
         currentAction: runAction,
-        lifeTime: (type === 'crawler') ? 12.0 : Infinity 
+        lifeTime: (type === 'crawler') ? 12.0 : Infinity
     });
 } 
 
