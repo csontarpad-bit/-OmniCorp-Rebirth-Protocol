@@ -475,30 +475,30 @@ function loadFPSWeapon(id, url, scale, posOffset, rotOffset, animMap) {
     });
 }
 
-// --- FEGYVEREK BETÖLTÉSE A TÖKÉLETES KOORDINÁTÁKKAL ---
+// --- FEGYVEREK BETÖLTÉSE ---
 
 // 1. PISZTOLY
 loadFPSWeapon('pistol', 'https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/54aa4e08f9a8991f952a06b845453bf31403aff8/3DModels/fps_pistol_animated.glb', 
     0.01, {x: 0.150, y: -0.300, z: -0.350}, {x: 0.000, y: 3.142, z: 0.000}, 
-    { shoot: [7.47, 7.80], reload: [2.13, 4.35], hide: [4.35, 4.73], take: [4.73, 5.90], watch: [5.90, 6.80] }
+    { shoot: [7.47, 7.80], reload: [2.13, 4.35], hide: [4.35, 4.73], take: [4.73, 5.90], watch: [5.90, 6.80], bash: [6.80, 7.46] }
 );
 
 // 2. GÉPKARABÉLY (SMG)
 loadFPSWeapon('rifle', 'https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/54aa4e08f9a8991f952a06b845453bf31403aff8/3DModels/fps_animated_smg.glb', 
     0.01, {x: 0.200, y: -0.300, z: -0.050}, {x: 0.000, y: 3.142, z: 0.000}, 
-    { shoot: [0, 0.20], reload: [0.20, 2.70], hide: [4.33, 4.65], take: [4.65, 5.91], watch: [5.91, 7.15] }
+    { shoot: [0, 0.20], reload: [0.20, 2.70], hide: [4.30, 4.65], take: [4.65, 5.91], watch: [5.91, 7.15], bash: [7.10, 7.80] }
 );
 
 // 3. NEHÉZ REVOLVER (SUPER)
 loadFPSWeapon('super', 'https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/54aa4e08f9a8991f952a06b845453bf31403aff8/3DModels/revolver_animated.glb', 
     0.01, {x: 0.250, y: -0.200, z: -0.350}, {x: 0.000, y: 3.042, z: 0.000}, 
-    { shoot: [0, 0.45], reload: [0.45, 7.40], hide: [7.40, 7.80], take: [7.80, 8.95], watch: [8.95, 9.80] }
+    { shoot: [0, 0.45], reload: [0.45, 7.40], hide: [7.40, 7.80], take: [7.80, 8.95], watch: [8.95, 9.80], bash: [9.80, 10.66] }
 );
 
-// 4. SÖRÉTES PUSKA (Hozzáadva a PUMP animáció és JAVÍTOTT WATCH!)
+// 4. SÖRÉTES PUSKA
 loadFPSWeapon('shotgun', 'https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/54aa4e08f9a8991f952a06b845453bf31403aff8/3DModels/shotgun_animated.glb', 
     0.01, {x: 0.200, y: -0.300, z: -0.050}, {x: 0.000, y: 3.142, z: 0.000}, 
-    { shoot: [0, 0.40], pump: [0.36, 1.12], reloadStart: [1.12, 1.60], reload: [1.60, 2.60], reloadEnd: [2.60, 2.95], hide: [2.95, 3.35], take: [3.35, 4.30], watch: [4.30, 5.20] } // 5.25 helyett 5.20!
+    { shoot: [0, 0.40], pump: [0.36, 1.12], reloadStart: [1.12, 1.60], reload: [1.60, 2.60], reloadEnd: [2.60, 2.95], hide: [2.95, 3.35], take: [3.35, 4.30], watch: [4.30, 5.20], bash: [5.31, 6.00] }
 );
 
 // 5. KÉS (Erőből Szúrás - Power Hit!)
@@ -685,6 +685,78 @@ window.checkDirective = function(actionType, targetType) {
         }
     }
 }
+
+// ==========================================
+// --- ÚJ: FEGYVER LÖKÉS (BASH / STUN) LOGIKA ---
+// ==========================================
+window.performWeaponBash = function() {
+    if (gameState !== 'PLAYING') return;
+    
+    // Késsel (bal klikk a támadás) és Gen-Stabbal nem lehet lökni!
+    if (currentWeaponId === 'melee' || currentWeaponId === 'heal') return; 
+
+    // Ha épp lő vagy előveszi, nem lökhet. DE a töltést megszakíthatja vele!
+    if (isWeaponBusy && !isReloading) return; 
+
+    if (isReloading) {
+        window.cancelReloadRequested = true;
+    }
+
+    isWeaponBusy = true;
+    isReloading = false;
+    document.getElementById('reload-text').classList.add('hidden');
+
+    let action = playFPSAnim(currentWeaponId, 'bash');
+    let totalDur = action ? (action._clip.duration * 1000) : 500;
+
+    // --- IDŐZÍTÉS KISZÁMÍTÁSA A TE IDŐBÉLYEGEID ALAPJÁN ---
+    let hitDelay = 200; // Alap: Pisztoly (7.00 - 6.80 = 0.2mp) és SMG (7.30 - 7.10 = 0.2mp)
+    if (currentWeaponId === 'shotgun') hitDelay = 190; // Sörétes (5.50 - 5.31 = 0.19mp)
+    if (currentWeaponId === 'super') hitDelay = 300;   // Revolver (10.10 - 9.80 = 0.3mp)
+
+    // A csapás hangja (Suhintás a kés hangjával, de lövés nélkül!)
+    setTimeout(() => { playSound('knifeHit', 0.0); }, hitDelay - 50);
+
+    // --- A TALÁLAT ÉRZÉKELÉSE ---
+    setTimeout(() => {
+        globalRaycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
+        const intersects = globalRaycaster.intersectObjects(enemyHitboxes, false);
+
+        // Rövid távolság: 2.5 méter
+        if (intersects.length > 0 && intersects[0].distance < 2.5) { 
+            playSound('zombieHit'); // Tompa ütődés hang
+            let hitObj = intersects[0].object;
+            let en = enemies.find(e => e.bodyHitbox === hitObj || e.headHitbox === hitObj);
+
+            if (en) {
+                // STUN (Szédítés) alkalmazása zombi típusonként!
+                if (en.type === 'boss') {
+                    // Boss immunis a lökésre, de egy picit sebződik tőle
+                    en.health -= 2; 
+                } else {
+                    // Ha a zombi el van lökve, a "kábult" időzítőt állítjuk be neki!
+                    if (en.type === 'tank') en.stunTimer = 0.5; // Kicsit torpan meg
+                    else if (en.type === 'runner') en.stunTimer = 1.5; // Közepes szédülés
+                    else en.stunTimer = 2.5; // Sima zombik, stalkerek, crawlerek hosszan kábultak!
+                    
+                    en.health -= 2; // Egy minimálisat sebez is az ütés
+                }
+                
+                const screenBlood = document.getElementById('screen-blood');
+                if (screenBlood) screenBlood.style.opacity = 0.5; // Kisebb vérfröccs
+
+                if (en.health <= 0) killZombie(en, false);
+            }
+        }
+    }, hitDelay);
+
+    // Visszaállás az alap animációra az ütés végén
+    setTimeout(() => {
+        isWeaponBusy = false;
+        window.weaponIdleTimer = 1.0;
+        playFPSAnim(currentWeaponId, 'watch');
+    }, totalDur);
+};
 
 // ==========================================
 // KÖZÖS ZOMBI HALÁL FÜGGVÉNY
@@ -1211,7 +1283,7 @@ window.addEventListener('keydown', (e) => {
     if (key === 'c' && gameState === 'PLAYING') isCrouching = true;
     if (e.shiftKey && gameState === 'PLAYING' && !isCrouching) isSprinting = true;
 
-// --- SZÜNET GOMB (BACKSPACE ODA-VISSZA KAPCSOLÁS) ---
+ // --- SZÜNET GOMB (BACKSPACE ODA-VISSZA KAPCSOLÁS) ---
     if (key === 'backspace') {
         e.preventDefault(); // Megakadályozzuk a böngésző "vissza" funkcióját
         
@@ -1550,8 +1622,9 @@ window.addEventListener('mousedown', (e) => {
             if(weapons[currentWeaponId].auto) autoShootTimer = weapons[currentWeaponId].fireRate;
             handleShoot(); 
         }
-    } else if (e.button === 2) {
-        if (typeof handleWeaponSwitch === 'function') handleWeaponSwitch(e);
+} else if (e.button === 2) {
+        // --- ÚJ: JOBB KLIKK = FEGYVER LÖKÉS (BASH) ---
+        if (typeof performWeaponBash === 'function') performWeaponBash();
     }
 });
 
@@ -1635,19 +1708,7 @@ window.executeMeleeStrike = function(chargeTime) {
 
 window.addEventListener('contextmenu', (e) => e.preventDefault());
 
-// BIZTONSÁGOS AKTIVÁLÁS: DEV MENU (DELETE GOMB)
-window.addEventListener('keydown', (e) => {
-    if (e.key === 'Delete') { // <--- KICSERÉLVE DELETE-RE!
-        const devMenuEl = document.getElementById('dev-menu');
-        if (devMenuEl) {
-            if (devMenuEl.classList.contains('hidden')) {
-                devMenuEl.classList.remove('hidden');
-            } else {
-                devMenuEl.classList.add('hidden');
-            }
-        }
-    }
-});
+
 
 // A Játék Megállítása
 window.pauseGame = function() {
@@ -2850,17 +2911,31 @@ if (window.meleeCooldown > 0) window.meleeCooldown -= delta;
             continue; 
         }
 
-// ==========================================
+        // ==========================================
         // ANIMÁCIÓK FRISSÍTÉSE ÉS SEBESSÉG SZINKRONIZÁLÁSA
         // ==========================================
+        if (typeof en.stunTimer === 'undefined') en.stunTimer = 0;
+        
         if (activeFreezeTimer > 0) {
             // Fagyasztva: Az animáció teljesen megáll
             if (en.mixer) en.mixer.timeScale = 0; 
             continue; 
-} else {
+        } 
+        // --- ÚJ: HA MEGÜTÖTTÉK ÉS SZÉDÜL ---
+        else if (en.stunTimer > 0) {
+            en.stunTimer -= delta;
+            
+            // Az animációja drasztikusan lelassul (szinte kómában van), 
+            // és MIVEL ITT a `continue;`-t használjuk, a zombi NEM fog mozogni és NEM is tud megütni téged!
+            if (en.mixer) {
+                en.mixer.timeScale = 0.1; 
+                en.mixer.update(delta);
+            }
+            continue; 
+        }
+        else {
             // ALAP ESET: A zombi mozog, az animáció fut
             if (en.mixer) { 
-                // A fizikai sebesség szorzója (max +35%)
                 let speedMultiplier = 1.0 + Math.min(((currentWave - 1) * 0.035), 0.35);
                 
                 // --- EGYEDI ANIMÁCIÓS SEBESSÉGEK TÍPUSONKÉNT ---
@@ -2981,10 +3056,8 @@ if (window.meleeCooldown > 0) window.meleeCooldown -= delta;
             continue; // Kihagyja a normál zombi támadást
         }
        
-// 1. Egyedi támadási távolság: A Boss-nak sokkal hosszabb a keze (8.0), a többinek marad a 3.0
-        let attackRange = (en.type === 'boss') ? 8.0 : 3.0;
-        
-        // --- ÚJ LOGIKA: BOSS ÜVÖLTÉS ÉS PIHENŐ (COOLDOWN) IDŐZÍTŐ ---
+// 1. Egyedi támadási távolság (Lejjebb vettük, hogy ne sebezzenek méterekről!)
+        let attackRange = (en.type === 'boss') ? 8.0 : (en.type === 'tank' ? 3.5 : 2.0);
         
         // Ha nem létezik a pihenő időzítő, hozzuk létre
         if (typeof en.attackRestTimer === 'undefined') en.attackRestTimer = 0;
@@ -2997,195 +3070,201 @@ if (window.meleeCooldown > 0) window.meleeCooldown -= delta;
         // Ha a boss épp ordít, az időzítő csökken
         if (en.roarTimer > 0) {
             en.roarTimer -= delta;
-            
-            // Ha Boss, és épp ordít, folyamatosan lőjünk ki egy hanghullámot!
             if (en.type === 'boss') {
                 if (typeof en.waveCooldown === 'undefined') en.waveCooldown = 0;
                 en.waveCooldown -= delta;
-                
                 if (en.waveCooldown <= 0) {
                     spawnBossShockwave(en.mesh);
-                    en.waveCooldown = 0.15; // 0.15 másodpercenként újabb lökéshullám (folyamatos áradat)!
+                    en.waveCooldown = 0.15; 
                 }
             }
-            
-            // FONTOS: Ha most ért véget az üvöltés (0 alá esett az idő), kezdjen el PIHENNI 1 másodpercig!
-            if (en.roarTimer <= 0) {
-                en.attackRestTimer = 1.0; 
-            }
+            if (en.roarTimer <= 0) en.attackRestTimer = 1.0; 
         }
         
         // ==========================================
-        // TÁMADÁS INDÍTÁSA (Ha elég közel vagy ÉS NEM PIHEN ÉPPEN)
+        // ÚJ: IDŐZÍTETT TÁMADÁS ÉS COMBO RENDSZER
         // ==========================================
-        if (distToPlayer <= attackRange && en.attackRestTimer <= 0 && invincibilityTimer <= 0) {
-            
-            // --- ÚJ: BOSS SZINKRONIZÁLT TÁMADÁS ---
-            if (en.type === 'boss' && en.roarTimer <= 0) {
-                en.roarTimer = 3.8; 
-                en.waveCooldown = 0; 
+        
+        // A) HA ÉPPEN FOLYAMATBAN VAN EGY TÁMADÓ MOZDULAT
+        if (en.isAttacking) {
+            en.attackAnimTimer -= delta;
+
+// BECSAPÓDÁS PILLANATA: Amikor az animáció lecsapó fázisához ér
+            if (en.attackAnimTimer <= en.hitFrameTime && !en.hasDealtDamage) {
+                en.hasDealtDamage = true;
+
+                // TÁVOLSÁG ÚJRA-ELLENŐRZÉSE: Ha időközben hátráltál, elkerülöd az ütést! (Dodge)
+                let currentDist = Math.hypot(savedCamX - en.mesh.position.x, camera.position.z - en.mesh.position.z);
                 
-                // Mielőtt elkezdi az üvöltést, UTOLJÁRA feléd fordul, aztán belefagy a pózba!
-                en.mesh.lookAt(savedCamX, 0, camera.position.z);
-                
-                if (!sounds['bossAttack'] || !sounds['bossAttack'].isPlaying) {
-                    playSound('bossAttack'); 
-                }
-            }
-
-            // TÁMADÁS ANIMÁCIÓ BEKAPCSOLÁSA (Ha van)
-            if (en.attackAction && en.currentAction !== en.attackAction) {
-                en.runAction.fadeOut(0.2);
-                en.attackAction.reset().fadeIn(0.2).play();
-                en.currentAction = en.attackAction;
-            }
-
-           // ==========================================
-            // --- ÚJ: TÖLCSÉR-SEBZÉS (CSAK ELŐLRE SEBEZ) ---
-            // ==========================================
-            let isInCone = true; // Alap zombiknál mindig igaz, ők körben sebeznek
-
-            if (en.type === 'boss') {
-                // Megnézzük a Boss előre mutató vektorát (amerre a teste néz)
-                let bossForward = new THREE.Vector3(0, 0, 1).applyQuaternion(en.mesh.quaternion).normalize();
-                
-                // Kiszámoljuk a vektort, ami a Bosstól a játékos felé mutat
-                let dirToPlayer = new THREE.Vector3().subVectors(camera.position, en.mesh.position).normalize();
-                dirToPlayer.y = 0; // Síkban nézzük, a magasság most nem számít
-                bossForward.y = 0;
-                bossForward.normalize();
-
-                // Kiszámoljuk a két vektor által bezárt szöget
-                // A "dot product" egy számot ad -1 és 1 között. A 0.85 kb 30 fok eltérést jelent (összesen 60 fokos tölcsér).
-                let dotProduct = bossForward.dot(dirToPlayer);
-
-                // Ha a dotProduct kisebb, mint 0.85, akkor a játékos kívül esik a 90 fokos tölcséren!
-                if (dotProduct < 0.85) {
-                    isInCone = false; // Háta mögött / nagyon oldalt van!
-                }
-            }
-
-            // CSAK AKKOR SEBEZ ÉS RÁZZA A KÉPERNYŐT, HA A TÖLCSÉREN BELÜL VAGY!
-            if (isInCone) {
-                
-                // Sebzés kiosztása (Ha letelt a késleltetésed)
-                if (damageCooldown <= 0) { 
-                    damageCooldown = 1.0; 
-                    cameraShake = 0.5; 
+                if (currentDist <= attackRange && invincibilityTimer <= 0) {
                     
-                    if (en.type === 'boss') {
-                        // Képernyő glitch CSAK ha el is talált a hanghullám!
-                        const glitchOverlay = document.getElementById('glitch-overlay');
-                        if (glitchOverlay) {
-                            glitchOverlay.classList.remove('hidden');
-                            glitchOverlay.classList.add('glitch-active');
-                            setTimeout(() => {
-                                glitchOverlay.classList.remove('glitch-active');
-                                glitchOverlay.classList.add('hidden');
-                            }, 500);
+                    let isInCone = true; 
+                    
+                    // --- ÚJ: TÖLCSÉR (CONE) ELLENŐRZÉS A BOSS ÉS A TANK SZÁMÁRA ---
+                    // Ha a Tank vagy a Boss üt, meg kell vizsgálni, hogy előtte állsz-e!
+                    if (en.type === 'boss' || en.type === 'tank') {
+                        let enemyForward = new THREE.Vector3(0, 0, 1).applyQuaternion(en.mesh.quaternion).normalize();
+                        let dirToPlayer = new THREE.Vector3().subVectors(camera.position, en.mesh.position).normalize();
+                        dirToPlayer.y = 0; enemyForward.y = 0; enemyForward.normalize();
+                        
+                        // Dot Product: A Boss tölcsére 60 fokos (0.85), a Tanké szélesebb, 120 fokos (0.5)
+                        let dotLimit = (en.type === 'boss') ? 0.85 : 0.5;
+                        
+                        // Ha a szögön kívül vagy (oldalt vagy mögötte), nem talál el!
+                        if (enemyForward.dot(dirToPlayer) < dotLimit) {
+                            isInCone = false;
                         }
-                    } else {
-                        playSound('hurt'); 
                     }
-                } 
 
-                // Sebzés számolás (Páncél + Élet)
-                const stats = difficultySettings[currentDifficulty];
-                let rawDamage = stats.damage * en.damageMult; 
+                    if (isInCone) {
+                        // Képernyőrázkódás és Késleltetés
+                        if (damageCooldown <= 0) { 
+                            damageCooldown = 0.3; // 0.3 másodperc a kombó ütések miatt
+                            cameraShake = (en.type === 'tank') ? 0.6 : 0.4; 
+                            
+                            if (en.type === 'boss') {
+                                const glitchOverlay = document.getElementById('glitch-overlay');
+                                if (glitchOverlay) {
+                                    glitchOverlay.classList.remove('hidden');
+                                    glitchOverlay.classList.add('glitch-active');
+                                    setTimeout(() => { glitchOverlay.classList.remove('glitch-active'); glitchOverlay.classList.add('hidden'); }, 500);
+                                }
+                            } else {
+                                playSound('hurt'); 
+                            }
+                        } 
 
-                if (playerArmor > 0) {
-                    if (playerArmor >= rawDamage) {
-                        playerArmor -= rawDamage; 
-                        rawDamage = 0; 
-                    } else {
-                        rawDamage -= playerArmor; 
-                        playerArmor = 0; 
+                        // --- ÚJ: SEBZÉS JAVÍTÁSA (MULTIPLIER) ---
+                        // Mivel már nem 60-szor sebez másodpercenként, hanem csak EGYSZER animációnként,
+                        // felszorozzuk a sebzést, hogy az "ütés" tényleg fájjon! (Szorzó: 50)
+                        const stats = difficultySettings[currentDifficulty];
+                        let baseDamageMultiplier = 50; 
+                        let rawDamage = stats.damage * en.damageMult * baseDamageMultiplier; 
+
+                        // Extra bónusz: A Juggernaut kombó 3. ütése (a leglassabb) duplát sebez!
+                        if (en.type === 'tank' && en.comboStep === 2) {
+                            rawDamage *= 1.5; 
+                        }
+
+                        // Páncél és Élet levonása
+                        if (playerArmor > 0) {
+                            if (playerArmor >= rawDamage) { playerArmor -= rawDamage; rawDamage = 0; } 
+                            else { rawDamage -= playerArmor; playerArmor = 0; }
+                        }
+                        if (rawDamage > 0 && !isGodMode) playerHealth -= rawDamage;
+
+                        checkDirective('take_damage', en.type);
+                        if (typeof updateUI === 'function') updateUI(); 
+                        const screenBlood = document.getElementById('screen-blood');
+                        if (screenBlood) screenBlood.style.opacity = 1.0;
+                        if (playerHealth <= 0) {
+                            if (skills.revive.level > 0 && gameState === 'PLAYING') {
+                                skills.revive.level--;
+                                playerHealth = 100 + (skills.maxHealth.level * 20); 
+                                invincibilityTimer = 2.0; 
+                                playerInfection = Math.max(0, playerInfection - 40); 
+                                druggedTimer = 0; 
+                                document.body.classList.remove('drugged', 'infected-mild', 'infected-medium', 'infected-severe');
+                                playSound('defibrillator');
+                                const healFlash = document.getElementById('heal-flash');
+                                if (healFlash) { healFlash.style.opacity = 1; setTimeout(() => healFlash.style.opacity = 0, 500); }
+                                if (typeof updateShopButtons === 'function') updateShopButtons(); 
+                            } else {
+                                playSound('deathScream');
+                                gameState = 'GAMEOVER'; 
+                                document.exitPointerLock(); 
+                                document.body.classList.remove('drugged', 'infected-mild', 'infected-medium', 'infected-severe');
+                                playerInfection = 0; 
+                                if (typeof sounds !== 'undefined' && sounds['whispers'] && sounds['whispers'].isPlaying) sounds['whispers'].stop();
+                                document.getElementById('final-score').innerText = `ADAT: ${score} CR`; 
+                                document.getElementById('final-wave').innerText = `TÚLÉLT ITERÁCIÓ: ${currentWave}`; 
+                                if (typeof localStorage !== 'undefined') localStorage.removeItem('OmniCorpStats');
+                                document.getElementById('game-over').classList.remove('hidden');
+                            }
+                        }
                     }
+                } else {
+                    // SIKERES ELHAJOLÁS! Kiléptél a távolságból, amíg lendítette a kezét.
+                    if (en.type === 'tank') playSound('knifeHit', 0.0); // Levegőt hasító hang, jelezve hogy melléd ütött
                 }
-                if (rawDamage > 0 && !isGodMode) playerHealth -= rawDamage;
+            }
 
-                checkDirective('take_damage', en.type);
+            // HA VÉGET ÉRT AZ ÜTÉS ANIMÁCIÓ (Jöhet a kombó kövi része)
+            if (en.attackAnimTimer <= 0) {
+                en.isAttacking = false;
                 
-                if (typeof updateUI === 'function') updateUI(); 
-                const screenBlood = document.getElementById('screen-blood');
-                if (screenBlood) screenBlood.style.opacity = 1.0;
-
-                // Halál ellenőrzés
-                if (playerHealth <= 0) {
-                    if (skills.revive.level > 0 && gameState === 'PLAYING') {
-                        skills.revive.level--;
-                        playerHealth = 100 + (skills.maxHealth.level * 20); 
-                        invincibilityTimer = 2.0; 
-
-                        // --- ÚJ: FERTŐZÉS KIÉGETÉSE ÉS DROG MEGSZÜNTETÉSE ---
-                        playerInfection = Math.max(0, playerInfection - 40); 
-                        druggedTimer = 0; 
-                        document.body.classList.remove('drugged', 'infected-mild', 'infected-medium', 'infected-severe');
-                        // ---------------------------------------------------
-
-                       playSound('defibrillator');
-                        
-                        const healFlash = document.getElementById('heal-flash');
-                        if (healFlash) { healFlash.style.opacity = 1; setTimeout(() => healFlash.style.opacity = 0, 500); }
-                        if (typeof updateUI === 'function') updateShopButtons(); 
-                 } else {
-                        playSound('deathScream');
-                        gameState = 'GAMEOVER'; 
-                        document.exitPointerLock(); 
-
-                        // --- ÚJ TAKARÍTÁS HALÁLKOR ---
-                        document.body.classList.remove('drugged', 'infected-mild', 'infected-medium', 'infected-severe');
-                        playerInfection = 0; // Nullázzuk a fertőzést
-                        if (typeof sounds !== 'undefined' && sounds['whispers'] && sounds['whispers'].isPlaying) {
-                        sounds['whispers'].stop(); // Leállítjuk a suttogást
-                        }
-                        // -----------------------------
-                        
-                        document.getElementById('final-score').innerText = `ADAT: ${score} CR`; 
-                        document.getElementById('final-wave').innerText = `TÚLÉLT ITERÁCIÓ: ${currentWave}`; 
-                        
-                        // --- ÚJ: TISZTA LAP (MENTÉS TÖRLÉSE) ---
-                        if (typeof localStorage !== 'undefined') {
-                            localStorage.removeItem('OmniCorpStats');
-                        }
-                        // Memória nullázása is
-                        if (typeof playerStats !== 'undefined') {
-                            playerStats.plantsDestroyed = 0;
-                            playerStats.wavesSurvived = 0;
-                            playerStats.totalDataGathered = 0;
-                            playerStats.skillsBought = 0;
-                            playerStats.activeDirective = null;
-                            playerStats.directiveProgress = 0;
-                            playerStats.completedDirectives = [];
-                            playerStats.abandonedDirectives = [];
-                            // Zombi statisztikák nullázása
-                            for (let key in playerStats.kills) {
-                                playerStats.kills[key] = { body: 0, head: 0 };
-                            }
-                            // Fegyverek nullázása
-                            for (let wKey in weapons) {
-                                if (wKey !== 'pistol') weapons[wKey].owned = false;
-                                weapons[wKey].level = 1;
-                            }
-                            // Skillek nullázása
-                            for (let sKey in skills) {
-                                skills[sKey].level = 0;
-                            }
-                        }
-                        
-                        document.getElementById('game-over').classList.remove('hidden');
+                if (en.type === 'tank' && en.comboActions && en.comboActions.length > 0) {
+                    en.comboStep++; // Lépés a következő kombó animációra
+                    
+                    if (en.comboStep >= en.comboActions.length) {
+                        en.comboStep = 0; // Vége a kombónak
+                        en.attackRestTimer = 1.5; // Kifáradt, hosszú pihenő
+                    } else {
+                        en.attackRestTimer = 0.2; // Rövid szünet (0.2mp) két ütés között!
                     }
+                } else {
+                    en.attackRestTimer = 1.0; // Többiek alap pihenője a suhintás után
                 }
-            } // (Itt ér véget az "if (isInCone)" blokk!)
-            // ==========================================
-
-        } else {
-         
+            }
+        }
+        
+        // B) HA NEM TÁMAD ÉPPEN, DE BEÉRTÉL A TÁVOLSÁGBA (Támadás Indítása)
+        else if (distToPlayer <= attackRange && en.attackRestTimer <= 0 && invincibilityTimer <= 0 && (!en.roarTimer || en.roarTimer <= 0)) {
             
-// --- HA MESSZE VAGY TŐLE ---
+            if (en.type === 'boss') {
+                en.roarTimer = 3.8; en.waveCooldown = 0; 
+                en.mesh.lookAt(savedCamX, 0, camera.position.z);
+                if (!sounds['bossAttack'] || !sounds['bossAttack'].isPlaying) playSound('bossAttack'); 
+            }
+
+            // Állapot beállítása
+            en.isAttacking = true;
+            en.hasDealtDamage = false;
+
+            let animToPlay = en.attackAction;
+            let animDuration = 1.0;
+
+            // --- JUGGERNAUT KOMBÓ KIVÁLASZTÁSA ---
+            if (en.type === 'tank' && en.comboActions && en.comboActions.length > 0) {
+                animToPlay = en.comboActions[en.comboStep];
+            }
+
+            // Időzítők beállítása a kiválasztott animáció hossza alapján
+            if (animToPlay && animToPlay._clip) {
+                animDuration = animToPlay._clip.duration;
+            }
+            en.attackAnimTimer = animDuration;
+            
+            // HIT FRAME: A sebzés az animáció 50%-ánál történik (amikor a pörölyként lecsapó kéz leér)
+            en.hitFrameTime = animDuration * 0.5; 
+
+            // ANIMÁCIÓ LEJÁTSZÁSA
+            if (animToPlay && en.currentAction !== animToPlay) {
+                en.runAction.fadeOut(0.2);
+                
+                // Ha kombó, állítsuk meg a korábbi ütéseket
+                if (en.type === 'tank' && en.comboActions) {
+                    en.comboActions.forEach(a => a.stop());
+                }
+                
+                animToPlay.reset().fadeIn(0.2).play();
+                en.currentAction = animToPlay;
+            }
+        } 
+        
+        // C) MOZGÁS ÉS AI KÖVETÉS
+        else {
+            
+            // Ha a Juggernaut elkezdett egy kombót, de te elszaladtál messzire, felejtse el!
+            if (en.type === 'tank' && distToPlayer > attackRange * 1.5) {
+                en.comboStep = 0; 
+            }
+
             if (en.type === 'boss' && en.roarTimer > 0) {
                 // A Boss itt nem csinál semmit, mert épp ordít
             } else {
+                
+
                 
            // ==========================================
                 // ÚJ AI LOGIKA: MENEKÜLÉS VAGY OKOS TÁMADÁS
@@ -3239,9 +3318,11 @@ if (window.meleeCooldown > 0) window.meleeCooldown -= delta;
                 enemyDir.y = 0; 
                 if (enemyDir.lengthSq() > 0) enemyDir.normalize();
 
-                // --- 3. FUTÁS ANIMÁCIÓ VISSZAKAPCSOLÁSA ---
-                if (en.attackAction && en.currentAction !== en.runAction) {
-                    en.attackAction.fadeOut(0.2);
+// --- 3. FUTÁS ANIMÁCIÓ VISSZAKAPCSOLÁSA ---
+                if (en.currentAction !== en.runAction) {
+                    if (en.type === 'tank' && en.comboActions) en.comboActions.forEach(a => a.fadeOut(0.2));
+                    else if (en.attackAction) en.attackAction.fadeOut(0.2);
+                    
                     en.runAction.reset().fadeIn(0.2).play();
                     en.currentAction = en.runAction;
                 }
