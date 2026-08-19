@@ -3070,123 +3070,210 @@ if (window.meleeCooldown > 0) window.meleeCooldown -= delta;
         // Ha a boss épp ordít, az időzítő csökken
         if (en.roarTimer > 0) {
             en.roarTimer -= delta;
+            
             if (en.type === 'boss') {
                 if (typeof en.waveCooldown === 'undefined') en.waveCooldown = 0;
                 en.waveCooldown -= delta;
+                
+                // Látvány: Füstpamacsok kilövése
                 if (en.waveCooldown <= 0) {
                     spawnBossShockwave(en.mesh);
                     en.waveCooldown = 0.15; 
                 }
+
+                // ==========================================
+                // ÚJ: BOSS FOLYAMATOS TÖLCSÉR SEBZÉSE
+                // ==========================================
+                let currentDist = Math.hypot(savedCamX - en.mesh.position.x, camera.position.z - en.mesh.position.z);
+                
+                // 8.0 a Boss lőtávja. Ha benne vagy a hatósugárban:
+                if (currentDist <= 8.0 && invincibilityTimer <= 0) {
+                    let bossForward = new THREE.Vector3(0, 0, 1).applyQuaternion(en.mesh.quaternion).normalize();
+                    let dirToPlayer = new THREE.Vector3().subVectors(camera.position, en.mesh.position).normalize();
+                    dirToPlayer.y = 0; bossForward.y = 0; bossForward.normalize();
+                    
+                    // Ha a tölcséren (60 fok) belül vagy
+                    if (bossForward.dot(dirToPlayer) >= 0.85) {
+                        
+                        if (typeof en.bossDamageTick === 'undefined') en.bossDamageTick = 0;
+                        en.bossDamageTick -= delta;
+                        
+                        // 0.2 másodpercenként kapod a sebzést (Folyamatos HP olvadás)
+                        if (en.bossDamageTick <= 0) {
+                            en.bossDamageTick = 0.2;
+                            
+                            const stats = difficultySettings[currentDifficulty];
+                            // Mivel sűrűn sebez (másodpercenként 5x), a szorzó kisebb (8 a Tank 50-éhez képest), 
+                            // hogy ne insta-kill legyen, de gyorsan leolvassza a HP-t.
+                            let rawDamage = stats.damage * en.damageMult * 8; 
+                            
+                            // Páncél és Élet levonása
+                            if (playerArmor > 0) {
+                                if (playerArmor >= rawDamage) { playerArmor -= rawDamage; rawDamage = 0; } 
+                                else { rawDamage -= playerArmor; playerArmor = 0; }
+                            }
+                            if (rawDamage > 0 && !isGodMode) playerHealth -= rawDamage;
+
+                            checkDirective('take_damage', en.type);
+                            if (typeof updateUI === 'function') updateUI(); 
+                            
+                            const screenBlood = document.getElementById('screen-blood');
+                            if (screenBlood) screenBlood.style.opacity = 1.0;
+                            
+                            cameraShake = 0.3; // Kisebb, de folyamatos rázkódás a gáztól
+                            
+                            // Glitch effekt a gáztól
+                            const glitchOverlay = document.getElementById('glitch-overlay');
+                            if (glitchOverlay) {
+                                glitchOverlay.classList.remove('hidden');
+                                glitchOverlay.classList.add('glitch-active');
+                                setTimeout(() => { glitchOverlay.classList.remove('glitch-active'); glitchOverlay.classList.add('hidden'); }, 150);
+                            }
+
+                            // HALÁL ELLENŐRZÉSE
+                            if (playerHealth <= 0) {
+                                if (skills.revive.level > 0 && gameState === 'PLAYING') {
+                                    skills.revive.level--;
+                                    playerHealth = 100 + (skills.maxHealth.level * 20); 
+                                    invincibilityTimer = 2.0; 
+                                    playerInfection = Math.max(0, playerInfection - 40); 
+                                    druggedTimer = 0; 
+                                    document.body.classList.remove('drugged', 'infected-mild', 'infected-medium', 'infected-severe');
+                                    playSound('defibrillator');
+                                    const healFlash = document.getElementById('heal-flash');
+                                    if (healFlash) { healFlash.style.opacity = 1; setTimeout(() => healFlash.style.opacity = 0, 500); }
+                                    if (typeof updateShopButtons === 'function') updateShopButtons(); 
+                                } else {
+                                    playSound('deathScream');
+                                    gameState = 'GAMEOVER'; 
+                                    document.exitPointerLock(); 
+                                    document.body.classList.remove('drugged', 'infected-mild', 'infected-medium', 'infected-severe');
+                                    playerInfection = 0; 
+                                    if (typeof sounds !== 'undefined' && sounds['whispers'] && sounds['whispers'].isPlaying) sounds['whispers'].stop();
+                                    document.getElementById('final-score').innerText = `ADAT: ${score} CR`; 
+                                    document.getElementById('final-wave').innerText = `TÚLÉLT ITERÁCIÓ: ${currentWave}`; 
+                                    if (typeof localStorage !== 'undefined') localStorage.removeItem('OmniCorpStats');
+                                    document.getElementById('game-over').classList.remove('hidden');
+                                }
+                            }
+                        }
+                    }
+                }
             }
             if (en.roarTimer <= 0) en.attackRestTimer = 1.0; 
         }
-        
+
         // ==========================================
-        // ÚJ: IDŐZÍTETT TÁMADÁS ÉS COMBO RENDSZER
+        // IDŐZÍTETT TÁMADÁS (TANK ÉS SIMA ZOMBIK)
         // ==========================================
         
         // A) HA ÉPPEN FOLYAMATBAN VAN EGY TÁMADÓ MOZDULAT
         if (en.isAttacking) {
             en.attackAnimTimer -= delta;
 
-// BECSAPÓDÁS PILLANATA: Amikor az animáció lecsapó fázisához ér
+            // BECSAPÓDÁS PILLANATA: Amikor az animáció lecsapó fázisához ér
             if (en.attackAnimTimer <= en.hitFrameTime && !en.hasDealtDamage) {
                 en.hasDealtDamage = true;
 
-                // TÁVOLSÁG ÚJRA-ELLENŐRZÉSE: Ha időközben hátráltál, elkerülöd az ütést! (Dodge)
-                let currentDist = Math.hypot(savedCamX - en.mesh.position.x, camera.position.z - en.mesh.position.z);
-                
-                if (currentDist <= attackRange && invincibilityTimer <= 0) {
+                // FONTOS: A Boss sebzését feljebb intéztük a roarTimer-ben, itt csak a többiek ütnek!
+                if (en.type !== 'boss') {
                     
-                    let isInCone = true; 
+                    // TÁVOLSÁG ÚJRA-ELLENŐRZÉSE: Ha időközben hátráltál, elkerülöd az ütést! (Dodge)
+                    let currentDist = Math.hypot(savedCamX - en.mesh.position.x, camera.position.z - en.mesh.position.z);
                     
-                    // --- ÚJ: TÖLCSÉR (CONE) ELLENŐRZÉS A BOSS ÉS A TANK SZÁMÁRA ---
-                    // Ha a Tank vagy a Boss üt, meg kell vizsgálni, hogy előtte állsz-e!
-                    if (en.type === 'boss' || en.type === 'tank') {
-                        let enemyForward = new THREE.Vector3(0, 0, 1).applyQuaternion(en.mesh.quaternion).normalize();
-                        let dirToPlayer = new THREE.Vector3().subVectors(camera.position, en.mesh.position).normalize();
-                        dirToPlayer.y = 0; enemyForward.y = 0; enemyForward.normalize();
+                    if (currentDist <= attackRange && invincibilityTimer <= 0) {
                         
-                        // Dot Product: A Boss tölcsére 60 fokos (0.85), a Tanké szélesebb, 120 fokos (0.5)
-                        let dotLimit = (en.type === 'boss') ? 0.85 : 0.5;
+                        let isInCone = true; 
                         
-                        // Ha a szögön kívül vagy (oldalt vagy mögötte), nem talál el!
-                        if (enemyForward.dot(dirToPlayer) < dotLimit) {
-                            isInCone = false;
-                        }
-                    }
-
-                    if (isInCone) {
-                        // Képernyőrázkódás és Késleltetés
-                        if (damageCooldown <= 0) { 
-                            damageCooldown = 0.3; // 0.3 másodperc a kombó ütések miatt
-                            cameraShake = (en.type === 'tank') ? 0.6 : 0.4; 
+                        // TÖLCSÉR (CONE) ELLENŐRZÉS A TANK SZÁMÁRA
+                        if (en.type === 'tank') {
+                            let enemyForward = new THREE.Vector3(0, 0, 1).applyQuaternion(en.mesh.quaternion).normalize();
+                            let dirToPlayer = new THREE.Vector3().subVectors(camera.position, en.mesh.position).normalize();
+                            dirToPlayer.y = 0; enemyForward.y = 0; enemyForward.normalize();
                             
-                            if (en.type === 'boss') {
-                                const glitchOverlay = document.getElementById('glitch-overlay');
-                                if (glitchOverlay) {
-                                    glitchOverlay.classList.remove('hidden');
-                                    glitchOverlay.classList.add('glitch-active');
-                                    setTimeout(() => { glitchOverlay.classList.remove('glitch-active'); glitchOverlay.classList.add('hidden'); }, 500);
-                                }
-                            } else {
+                            // Tank tölcsére 120 fok (0.5)
+                            if (enemyForward.dot(dirToPlayer) < 0.5) {
+                                isInCone = false;
+                            }
+                        }
+
+                        if (isInCone) {
+                            if (damageCooldown <= 0) { 
+                                damageCooldown = 0.3; // 0.3 másodperc a kombó ütések miatt
+                                cameraShake = (en.type === 'tank') ? 0.6 : 0.4; 
                                 playSound('hurt'); 
+                            } 
+
+                            const stats = difficultySettings[currentDifficulty];
+                            let baseDamageMultiplier = 50; 
+                            let rawDamage = stats.damage * en.damageMult * baseDamageMultiplier; 
+
+                            // --- ÚJ: KAMERA ELMOZDULÁS (KOPONYA-TRAUMA) A JUGGERNAUT ÜTÉSEINÉL ---
+                            if (en.type === 'tank') {
+                                if (en.comboStep === 0) {
+                                    // 1. Ütés (Jobb kéz lecsap a bal arcodra) -> Fej jobbra csapódik
+                                    yaw -= 0.15; 
+                                    pitch += 0.05; 
+                                } else if (en.comboStep === 1) {
+                                    // 2. Ütés (Bal kéz lecsap a jobb arcodra) -> Fej balra csapódik
+                                    yaw += 0.15; 
+                                    pitch += 0.05; 
+                                } else if (en.comboStep === 2) {
+                                    // 3. Ütés (Dupla lecsapás felülről) -> Fejed belevágódik a földbe
+                                    rawDamage *= 1.5;  // Bónusz sebzés
+                                    pitch -= 0.3;      // A kamera durván lenéz a földre
+                                    cameraShake = 1.0; // Extra erős rázkódás
+                                    
+                                    // Pillanatnyi szédülés (agyrázkódás effekt) a nagy ütéstől
+                                    druggedTimer = Math.max(druggedTimer, 1.5); 
+                                    document.body.classList.add('drugged');
+                                }
                             }
-                        } 
 
-                        // --- ÚJ: SEBZÉS JAVÍTÁSA (MULTIPLIER) ---
-                        // Mivel már nem 60-szor sebez másodpercenként, hanem csak EGYSZER animációnként,
-                        // felszorozzuk a sebzést, hogy az "ütés" tényleg fájjon! (Szorzó: 50)
-                        const stats = difficultySettings[currentDifficulty];
-                        let baseDamageMultiplier = 50; 
-                        let rawDamage = stats.damage * en.damageMult * baseDamageMultiplier; 
+                            // Páncél és Élet levonása
+                            if (playerArmor > 0) {
+                                if (playerArmor >= rawDamage) { playerArmor -= rawDamage; rawDamage = 0; } 
+                                else { rawDamage -= playerArmor; playerArmor = 0; }
+                            }
+                            if (rawDamage > 0 && !isGodMode) playerHealth -= rawDamage;
 
-                        // Extra bónusz: A Juggernaut kombó 3. ütése (a leglassabb) duplát sebez!
-                        if (en.type === 'tank' && en.comboStep === 2) {
-                            rawDamage *= 1.5; 
-                        }
+                            checkDirective('take_damage', en.type);
+                            if (typeof updateUI === 'function') updateUI(); 
+                            const screenBlood = document.getElementById('screen-blood');
+                            if (screenBlood) screenBlood.style.opacity = 1.0;
 
-                        // Páncél és Élet levonása
-                        if (playerArmor > 0) {
-                            if (playerArmor >= rawDamage) { playerArmor -= rawDamage; rawDamage = 0; } 
-                            else { rawDamage -= playerArmor; playerArmor = 0; }
-                        }
-                        if (rawDamage > 0 && !isGodMode) playerHealth -= rawDamage;
-
-                        checkDirective('take_damage', en.type);
-                        if (typeof updateUI === 'function') updateUI(); 
-                        const screenBlood = document.getElementById('screen-blood');
-                        if (screenBlood) screenBlood.style.opacity = 1.0;
-                        if (playerHealth <= 0) {
-                            if (skills.revive.level > 0 && gameState === 'PLAYING') {
-                                skills.revive.level--;
-                                playerHealth = 100 + (skills.maxHealth.level * 20); 
-                                invincibilityTimer = 2.0; 
-                                playerInfection = Math.max(0, playerInfection - 40); 
-                                druggedTimer = 0; 
-                                document.body.classList.remove('drugged', 'infected-mild', 'infected-medium', 'infected-severe');
-                                playSound('defibrillator');
-                                const healFlash = document.getElementById('heal-flash');
-                                if (healFlash) { healFlash.style.opacity = 1; setTimeout(() => healFlash.style.opacity = 0, 500); }
-                                if (typeof updateShopButtons === 'function') updateShopButtons(); 
-                            } else {
-                                playSound('deathScream');
-                                gameState = 'GAMEOVER'; 
-                                document.exitPointerLock(); 
-                                document.body.classList.remove('drugged', 'infected-mild', 'infected-medium', 'infected-severe');
-                                playerInfection = 0; 
-                                if (typeof sounds !== 'undefined' && sounds['whispers'] && sounds['whispers'].isPlaying) sounds['whispers'].stop();
-                                document.getElementById('final-score').innerText = `ADAT: ${score} CR`; 
-                                document.getElementById('final-wave').innerText = `TÚLÉLT ITERÁCIÓ: ${currentWave}`; 
-                                if (typeof localStorage !== 'undefined') localStorage.removeItem('OmniCorpStats');
-                                document.getElementById('game-over').classList.remove('hidden');
+                            // HALÁL ELLENŐRZÉSE
+                            if (playerHealth <= 0) {
+                                if (skills.revive.level > 0 && gameState === 'PLAYING') {
+                                    skills.revive.level--;
+                                    playerHealth = 100 + (skills.maxHealth.level * 20); 
+                                    invincibilityTimer = 2.0; 
+                                    playerInfection = Math.max(0, playerInfection - 40); 
+                                    druggedTimer = 0; 
+                                    document.body.classList.remove('drugged', 'infected-mild', 'infected-medium', 'infected-severe');
+                                    playSound('defibrillator');
+                                    const healFlash = document.getElementById('heal-flash');
+                                    if (healFlash) { healFlash.style.opacity = 1; setTimeout(() => healFlash.style.opacity = 0, 500); }
+                                    if (typeof updateShopButtons === 'function') updateShopButtons(); 
+                                } else {
+                                    playSound('deathScream');
+                                    gameState = 'GAMEOVER'; 
+                                    document.exitPointerLock(); 
+                                    document.body.classList.remove('drugged', 'infected-mild', 'infected-medium', 'infected-severe');
+                                    playerInfection = 0; 
+                                    if (typeof sounds !== 'undefined' && sounds['whispers'] && sounds['whispers'].isPlaying) sounds['whispers'].stop();
+                                    document.getElementById('final-score').innerText = `ADAT: ${score} CR`; 
+                                    document.getElementById('final-wave').innerText = `TÚLÉLT ITERÁCIÓ: ${currentWave}`; 
+                                    if (typeof localStorage !== 'undefined') localStorage.removeItem('OmniCorpStats');
+                                    document.getElementById('game-over').classList.remove('hidden');
+                                }
                             }
                         }
+                    } else {
+                        // SIKERES ELHAJOLÁS! Kiléptél a távolságból, amíg lendítette a kezét.
+                        if (en.type === 'tank') playSound('knifeHit', 0.0); // Levegőt hasító hang, jelezve hogy melléd ütött
                     }
-                } else {
-                    // SIKERES ELHAJOLÁS! Kiléptél a távolságból, amíg lendítette a kezét.
-                    if (en.type === 'tank') playSound('knifeHit', 0.0); // Levegőt hasító hang, jelezve hogy melléd ütött
-                }
+                } // <--- IDE ZÁR BE AZ "if (en.type !== 'boss')" !
             }
 
             // HA VÉGET ÉRT AZ ÜTÉS ANIMÁCIÓ (Jöhet a kombó kövi része)
@@ -3499,9 +3586,9 @@ if (window.meleeCooldown > 0) window.meleeCooldown -= delta;
         let plant = activePlants[i];
         if (plant.mixer) plant.mixer.update(delta); // Animáljuk a növényt
 
-        // Ha a játékos 2.5 méteren belülre ér -> PUKKANÁS!
+// Ha a játékos nagyon közel (1.2 méterre) ér -> PUKKANÁS!
         let distToPlayer = Math.hypot(savedCamX - plant.x, camera.position.z - plant.z);
-        if (distToPlayer < 2.5) {
+        if (distToPlayer < 1.2) {
             playSound('burst');
             
           // Növény eltüntetése
@@ -3522,11 +3609,14 @@ if (window.meleeCooldown > 0) window.meleeCooldown -= delta;
                     playerArmor = 0;
                 }
             }
-          if (explosionDamage > 0 && !isGodMode) playerHealth -= explosionDamage;
+            if (explosionDamage > 0 && !isGodMode) playerHealth -= explosionDamage;
             // ==========================================
 
-            // AZONNALI SEBZÉS (-20 HP)
+            // AZONNALI SEBZÉS (-20 HP) ÉS FERTŐZÉS (NEXUS SYNC) NÖVELÉSE
             playerHealth -= 20;
+            if (typeof playerInfection !== 'undefined') {
+                playerInfection = Math.min(100, playerInfection + 15); // +15% azonnali fertőzés a tüdőbe!
+            }
             
             // Lila villanás a képernyőn
             const damageFlash = document.getElementById('damage-flash');
