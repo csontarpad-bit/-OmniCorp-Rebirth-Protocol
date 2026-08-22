@@ -251,12 +251,13 @@ radGeo.setAttribute('position', new THREE.Float32BufferAttribute(radVerts, 3));
 // 3. Izzó, textúrázott anyag
 const radMat = new THREE.PointsMaterial({ 
     color: 0x55ff55, 
-    size: 0.6, // Nagyobb részecskék
+    size: 0.3, // JAVÍTÁS: Megfeleztük a méretüket (0.6 -> 0.3)
     map: particleTexture, 
     transparent: true, 
-    blending: THREE.AdditiveBlending, // Gyönyörűen világítanak, ha fedik egymást
-    depthWrite: false // Ne takarják ki a mögöttük lévő dolgokat hibásan
+    blending: THREE.AdditiveBlending, 
+    depthWrite: false 
 });
+
 const radSystem = new THREE.Points(radGeo, radMat);
 radSystem.renderOrder = 999; 
     
@@ -808,7 +809,7 @@ window.checkDirective = function(actionType, targetType) {
 
         // --- HA MOST LETT KÉSZ: JUTALOM OSZTÁS! ---
         if (playerStats.directiveProgress >= activeData.goal) {
-            playSound('heal'); // Siker hang
+            playSound('questComplete'); // JAVÍTÁS: Küldetés teljesítve hang!
             score += activeData.reward; // Pénz hozzáadása!
             
             // Beírjuk a teljesített listába, hogy többé ne sorsolja ki
@@ -2336,6 +2337,9 @@ window.startGame = function() {
     const fBtnUI = document.getElementById('freeze-btn');
     if (fBtnUI) fBtnUI.classList.add('hidden');
 
+    // JAVÍTÁS: Új játéknál garantáltan nincs bolt-büntetés!
+    shopLockedForNextWave = false;
+
     if (typeof playerStats !== 'undefined') {
         playerStats.activeDirective = null;
         playerStats.directiveProgress = 0;
@@ -2567,12 +2571,16 @@ function animate() {
     if (typeof toxicTickTimer !== 'undefined') {
         toxicTickTimer += delta;
         
-        // 1. MP-ENKÉNTI TICK (Játékos sebzése)
-        if (toxicTickTimer >= 1.0) {
+        // --- JAVÍTÁS: FOLYAMATOS SAV SEBZÉS (0.2 mp-ként olvad le az élet) ---
+        if (typeof window.toxicEffectTimer === 'undefined') window.toxicEffectTimer = 0;
+        window.toxicEffectTimer -= delta;
+
+        // 5-ször frissítünk másodpercenként (0.2 mp)
+        if (toxicTickTimer >= 0.2) {
             toxicTickTimer = 0; 
             
             let playerDamage = 0;
-            let worstPuddleState = null; // --- ÚJ: Nyilvántartjuk, melyik a legdurvább szín, amin állsz!
+            let worstPuddleState = null; 
             
             let px = camera.position.x;
             let pz = camera.position.z;
@@ -2582,16 +2590,16 @@ function animate() {
                 let distSq = Math.pow(px - p.position.x, 2) + Math.pow(pz - p.position.z, 2);
                 if (distSq <= 1.2) {
                     if (p.userData.state === 'green') { 
-                        playerDamage += 2; checkDirective('puddle_stand', 'green'); 
+                        playerDamage += 0.4; // 2 HP / 5 tick
                         if (!worstPuddleState) worstPuddleState = 'green';
                     }
                     else if (p.userData.state === 'yellow') { 
-                        playerDamage += 5; checkDirective('puddle_stand', 'yellow'); 
+                        playerDamage += 1.0; // 5 HP / 5 tick
                         if (worstPuddleState !== 'ready') worstPuddleState = 'yellow';
                     }
                     else if (p.userData.state === 'ready') { 
-                        playerDamage += 10; checkDirective('puddle_stand', 'ready'); 
-                        worstPuddleState = 'ready'; // A pirosnál nincs rosszabb!
+                        playerDamage += 2.0; // 10 HP / 5 tick
+                        worstPuddleState = 'ready'; 
                     }
                 }
             }
@@ -2606,19 +2614,14 @@ function animate() {
                 if (playerDamage > 0 && !isGodMode) playerHealth -= playerDamage; 
                 
                 if (typeof updateUI === 'function') updateUI();
-                playSound('hurt');
-                playSound('acidBurn'); 
                 
-                cameraShake = 0.15; 
+                // Folyamatos apró reszketés a marástól
+                cameraShake = Math.max(cameraShake, 0.05); 
                 
                 const acidOverlay = document.getElementById('acid-overlay');
                 if (acidOverlay && worstPuddleState) {
                     
-                    // --- ÚJ: SZÍNEZÉS ---
-                    // Először letisztítjuk az előző színeket
                     acidOverlay.classList.remove('acid-green', 'acid-yellow', 'acid-red');
-                    
-                    // Hozzáadjuk a megfelelőt
                     if (worstPuddleState === 'green') acidOverlay.classList.add('acid-green');
                     else if (worstPuddleState === 'yellow') acidOverlay.classList.add('acid-yellow');
                     else if (worstPuddleState === 'ready') acidOverlay.classList.add('acid-red');
@@ -2626,10 +2629,24 @@ function animate() {
                     acidOverlay.style.opacity = 1;
                     acidOverlay.classList.add('acid-burn-active');
                     
-                    setTimeout(() => { 
+                    // Óvatosan levesszük, ha kilépsz (folyamatosan fenntartjuk amíg benne állsz)
+                    if (window.acidClearTimeout) clearTimeout(window.acidClearTimeout);
+                    window.acidClearTimeout = setTimeout(() => { 
                         acidOverlay.style.opacity = 0; 
                         acidOverlay.classList.remove('acid-burn-active'); 
-                    }, 800);
+                    }, 300);
+                }
+
+                // --- HANGOK ÉS KÜLDETÉSEK (Ezek maradnak 1 másodperces ritmusban!) ---
+                if (window.toxicEffectTimer <= 0) {
+                    window.toxicEffectTimer = 1.0; // Visszaállítjuk az 1 mp-s számlálót
+                    
+                    playSound('hurt');
+                    playSound('acidBurn'); 
+                    
+                    if (worstPuddleState === 'green') checkDirective('puddle_stand', 'green');
+                    else if (worstPuddleState === 'yellow') checkDirective('puddle_stand', 'yellow');
+                    else if (worstPuddleState === 'ready') checkDirective('puddle_stand', 'ready');
                 }
 
                 if (playerHealth <= 0 && gameState === 'PLAYING') {
