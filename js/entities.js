@@ -354,20 +354,23 @@ function spawnEnemy(x, z, isBoss = false, forceType = null) {
 
 // --- ANIMÁCIÓK BIZTONSÁGOS INDÍTÁSA / VISSZAÁLLÍTÁSA ---
     if (runAction) {
-        // Ha a zombi a Pool-ból jött (újraéledt), biztosítanunk kell, 
-        // hogy a Halál animációja ne álljon a végén (clampWhenFinished), és újra fusson!
         if (isFromPool) {
-            mixer.stopAllAction(); // Leállítunk mindent (Támadás, Halál)
-            runAction.reset().fadeIn(0.1).play(); // Tiszta lappal, finoman indítjuk a futást
+            mixer.stopAllAction(); 
+            runAction.reset().fadeIn(0.1).play(); 
             
-            // ÚJRA BEÁLLÍTJUK, HOGY A ZOMBI FUSSON (Különben a game.js azt hinné, hogy még halott/támad)
             let enIdx = enemies.findIndex(e => e.mesh === mesh);
             if (enIdx > -1) {
                 enemies[enIdx].currentAction = runAction;
             }
         } else {
-            // Ha teljesen új zombi, simán csak elindítjuk
             runAction.play();
+        }
+
+        // --- ÚJ: DESZINKRONIZÁLÁS (Kórus-effektus megszüntetése) ---
+        // Ha van klip (animáció) hossz, egy véletlenszerű pontjára ugorjunk,
+        // így minden zombi más fázisában tart a lépésnek, amikor meglátod őket!
+        if (runAction._clip) {
+            runAction.time = Math.random() * runAction._clip.duration;
         }
     }
     
@@ -427,6 +430,10 @@ function spawnEnemy(x, z, isBoss = false, forceType = null) {
         bodyOffsetY: bodyOffsetY, 
         headOffsetY: headOffsetY, 
         
+        roarTimer: 0,
+        animSpeedOffset: (Math.random() * 0.15) - 0.075, // ÚJ: +/- 7.5% véletlen sebességeltolás az animációra!
+        frozen: false,
+
         // Szétválasztott szorzók használata
         health: (baseStats.health * hpMult) * powerMultiplier, 
         damageMult: finalDamageMult, 
