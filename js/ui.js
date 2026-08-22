@@ -354,8 +354,13 @@ function upgradeWeapon(wpnId, basePrice) {
         if (w.level === 2) w.maxReserve = Math.floor(w.maxReserve * 1.5);
         if (w.level === 3) w.reloadTime = Math.floor(w.reloadTime * 0.75);
         if (w.level === 4) { 
-            w.maxAmmo = Math.floor(w.maxAmmo * 1.5);
-            w.ammo = w.maxAmmo; // Szintlépésnél is telerakja a megnövelt tárat!
+            if (wpnId === 'super') {
+                // A Revolver tárkapacitása nem nőhet! Ehelyett kap +50% sebzést.
+                w.damage = Math.floor(w.damage * 1.5); 
+            } else {
+                w.maxAmmo = Math.floor(w.maxAmmo * 1.5);
+                w.ammo = w.maxAmmo; // Szintlépésnél is telerakja a megnövelt tárat!
+            }
         }
         if (w.level === 5) w.damage *= 2;
     }
@@ -496,7 +501,10 @@ window.updateShopButtons = function() {
         let nextLevelDesc = "";
         if (wp.level === 1) nextLevelDesc = "+50% Tartalék Lőszer";
         else if (wp.level === 2) nextLevelDesc = "-25% Újratöltési Idő";
-        else if (wp.level === 3) nextLevelDesc = "+50% Tárkapacitás";
+        else if (wp.level === 3) {
+            // A Revolver 4. szintjének leírása:
+            nextLevelDesc = (wData.id === 'super') ? "Magnum Kaliber (+50% Sebzés)" : "+50% Tárkapacitás";
+        }
         else if (wp.level === 4) nextLevelDesc = "Páncéltörő (+100% Sebzés)";
         
         if (!wp.owned) { 
@@ -1746,19 +1754,24 @@ if(pauseCodexBtn) {
     });
 }
 
+
+
 // ==========================================
 // FEJLESZTŐI (DEV) MENÜ LOGIKA (BIZTONSÁGOS)
 // ==========================================
-
-// BIZTONSÁGOS AKTIVÁLÁS: Csak akkor fusson le, ha tényleg megnyomták a gombot, és az elem létezik!
 document.addEventListener('keydown', (e) => {
-    if (e.key === '0') {
+    if (e.key === 'Delete') { 
         const devMenuEl = document.getElementById('dev-menu');
         if (devMenuEl) {
             if (devMenuEl.classList.contains('hidden')) {
                 devMenuEl.classList.remove('hidden');
+                document.exitPointerLock(); // Egeret kiadja
             } else {
                 devMenuEl.classList.add('hidden');
+                // VISSZAZÁRÁS (try-catch blokkba téve, hogy ne dobjon piros hibát)
+                if (gameState === 'PLAYING') {
+                    try { document.body.requestPointerLock(); } catch(err){}
+                }
             }
         }
     }
