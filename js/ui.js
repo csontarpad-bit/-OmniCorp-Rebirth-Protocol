@@ -45,6 +45,7 @@ if (openArchiveBtn) {
         if (archiveMenu) {
             archiveMenu.classList.remove('hidden');
             archiveMenu.style.display = 'flex'; 
+            playSound('termOpen');
         }
         
         document.querySelectorAll('.archive-tab-btn').forEach(b => b.classList.remove('active'));
@@ -65,6 +66,7 @@ if (tabArchiveIngameBtn) {
         if (archiveMenu) {
             archiveMenu.classList.remove('hidden');
             archiveMenu.style.display = 'flex'; 
+            playSound('termOpen');
         }
         
         document.querySelectorAll('.archive-tab-btn').forEach(b => b.classList.remove('active'));
@@ -250,65 +252,85 @@ if (tabWeaponsBtn && tabSkillsBtn && tabDirectivesBtn) {
 // --- BOLT MEGNYITÁSA ---
 window.openShop = function() {
     gameState = 'SHOPPING'; 
+    if(typeof playSound === 'function') playSound('termOpen');
     shopMenu.classList.remove('hidden');
-     document.getElementById('game-ui-wrapper').classList.add('hidden');
+    document.getElementById('game-ui-wrapper').classList.add('hidden');
+
+    // Elemek biztonságos megkeresése, amiket el kell rejteni büntetéskor
+    const statsBar = document.getElementById('shop-points') ? document.getElementById('shop-points').parentNode.parentNode : null;
+    const weaponBar = document.getElementById('shop-weapon-switches') ? document.getElementById('shop-weapon-switches').parentNode : null;
+    const tabsBar = document.querySelector('.shop-tabs');
+
     // ==========================================
     // --- KRONOS BÜNTETÉS (SZERZŐDÉSSZEGÉS) ---
     // ==========================================
     if (shopLockedForNextWave) {
-        // Eltüntetjük a bolt normál felületét (fülek és kártyák)
-        document.querySelector('.shop-tabs').style.display = 'none';
+        
+        // 1. ELREJTJÜK A FEJLÉC RÉSZEIT (Hogy igazi "Zárolt" képernyő legyen!)
+        if (statsBar) statsBar.style.display = 'none';
+        if (weaponBar) weaponBar.style.display = 'none';
+        if (tabsBar) tabsBar.style.display = 'none';
+
+        // 2. Elrejtjük a bolt tartalmát
         document.getElementById('shop-weapons').classList.add('hidden');
         document.getElementById('shop-skills').classList.add('hidden');
         document.getElementById('shop-directives').classList.add('hidden');
-        
-        // Kicseréljük a felső feliratot
-        const shopPointsEl = document.getElementById('shop-points');
-        if (shopPointsEl) {
-            shopPointsEl.innerHTML = `<span style="color:#ff0000; font-weight:bold; font-size:30px;">ZÁROLVA</span>`;
-        }
 
-        // Beszúrunk egy nagy piros hibaüzenetet a képernyő közepére
+        // 3. Beszúrjuk a letisztult, "AAA" hibaüzenetet középre
         let penaltyDiv = document.getElementById('penalty-screen');
         if (!penaltyDiv) {
             penaltyDiv = document.createElement('div');
             penaltyDiv.id = 'penalty-screen';
             penaltyDiv.style.textAlign = 'center';
-            penaltyDiv.style.marginTop = '40px';
+            penaltyDiv.style.marginTop = '80px'; // Kicsit lejjebb toljuk, hogy középen legyen
             penaltyDiv.style.marginBottom = '40px';
-            document.getElementById('terminal-screen').insertBefore(penaltyDiv, document.getElementById('close-shop-btn'));
+            document.getElementById('shop-content-wrapper').appendChild(penaltyDiv);
         }
         
         penaltyDiv.innerHTML = `
-            <div style="color: #ff0000; font-size: 50px; text-shadow: 0 0 20px #ff0000;">⚠️ HOZZÁFÉRÉS MEGTAGADVA ⚠️</div>
-            <div style="color: #ff5555; font-size: 20px; margin-top: 20px; font-weight: bold;">SZERZŐDÉSSZEGÉS ÉSZLELVE</div>
-            <div style="color: #aaa; font-size: 16px; margin-top: 15px; max-width: 600px; line-height: 1.5; margin-left: auto; margin-right: auto;">
-                A KRONOS protokoll megsértése miatt a vállalati nyomtatóhoz és orvosi készletekhez való hozzáférés ideiglenesen felfüggesztésre került. Az ellátmányozás a következő sikeres adatgyűjtési ciklus (hullám) után áll helyre.
+            <div style="color: #ff0000; font-size: 50px; text-shadow: 0 0 20px #ff0000; margin-bottom: 20px;">⚠️ HOZZÁFÉRÉS MEGTAGADVA ⚠️</div>
+            <div style="color: #ff5555; font-size: 24px; margin-bottom: 30px; font-weight: bold; letter-spacing: 2px;">SZERZŐDÉSSZEGÉS ÉSZLELVE</div>
+            <div style="color: #aaa; font-size: 18px; max-width: 600px; line-height: 1.8; margin-left: auto; margin-right: auto; padding: 25px; border: 1px dashed #aa0000; background: rgba(50,0,0,0.2); box-shadow: inset 0 0 20px rgba(255,0,0,0.1);">
+                A KRONOS protokoll megsértése miatt a vállalati nyomtatóhoz és orvosi készletekhez való hozzáférés ideiglenesen felfüggesztésre került.<br><br>
+                <span style="color:#ffaa00;">Az ellátmányozás a következő sikeres adatgyűjtési ciklus (hullám) után áll helyre.</span>
             </div>
         `;
         penaltyDiv.style.display = 'block';
 
         // Levesszük a büntetést, hogy a KÖVETKEZŐ hullám után már megnyíljon a bolt
         shopLockedForNextWave = false; 
-        return; // Itt kilépünk, nem futtatjuk le a normál bolt-frissítést!
+        return; // Itt kilépünk!
     }
     // ==========================================
 
     // HA NINCS BÜNTETÉS, MINDEN MEGY TOVÁBB NORMÁLISAN:
     
-    // Visszaállítjuk a bolt normál kinézetét (ha előzőleg büntetésben voltunk)
-    document.querySelector('.shop-tabs').style.display = 'flex';
+    // 1. Visszaállítjuk a fejléceket láthatóra
+    if (statsBar) statsBar.style.display = 'flex';
+    if (weaponBar) weaponBar.style.display = 'flex';
+    if (tabsBar) tabsBar.style.display = 'flex';
+
+    // 2. Eltüntetjük a büntetés képernyőt
     let penaltyDiv = document.getElementById('penalty-screen');
     if (penaltyDiv) penaltyDiv.style.display = 'none';
 
+    // 3. Biztosítjuk, hogy a Fegyverek fül legyen nyitva alapból
+    if (typeof resetShopTabs === 'function') resetShopTabs();
+    const tabWeaponsBtn = document.getElementById('tab-weapons');
+    const shopWeaponsDiv = document.getElementById('shop-weapons');
+    if (tabWeaponsBtn) tabWeaponsBtn.classList.add('active');
+    if (shopWeaponsDiv) shopWeaponsDiv.classList.remove('hidden');
+
     // Szép, zölden világító kiírás, ha kapott bónuszt!
     let bonusText = lastWaveBonus > 0 ? ` <span style="color:#00ff00; font-size:18px;">(+${lastWaveBonus} GYORSASÁGI BÓNUSZ)</span>` : '';
-    shopPoints.innerHTML = `${score} CR ${bonusText}`;
+    const shopPointsEl = document.getElementById('shop-points');
+    if (shopPointsEl) shopPointsEl.innerHTML = `${score} CR ${bonusText}`;
     
     if(typeof updateShopButtons === 'function') updateShopButtons();
 }
 
 document.getElementById('close-shop-btn').addEventListener('click', () => {
+    playSound('termClose'); // ÚJ: Terminál bezáró hang
     shopMenu.classList.add('hidden');
     gameState = 'PLAYING'; 
     
@@ -324,8 +346,9 @@ document.getElementById('close-shop-btn').addEventListener('click', () => {
     if (typeof startWaveCountdown === 'function') startWaveCountdown(); 
 });
 
-// --- VIZUÁLIS VISSZAJELZÉS ---
+// --- VIZUÁLIS VISSZAJELZÉS ÉS HIBAHANG ---
 function flashMoneyError() {
+    if (typeof playSound === 'function') playSound('error'); // ÚJ: Hiba hang lejátszása!
     shopPoints.style.color = '#ff0000';
     setTimeout(() => shopPoints.style.color = '#ffcc00', 300);
 }
@@ -337,6 +360,7 @@ function upgradeWeapon(wpnId, basePrice) {
     if (w.level >= 5 || score < cost) { flashMoneyError(); return; }
     
     score -= cost;
+    playSound('purchase'); // ÚJ: Pénzköltés hang!
     if (!w.owned) {
         // --- ELSŐ VÁSÁRLÁS ---
         w.owned = true;
@@ -374,6 +398,7 @@ function upgradeSkill(skillId) {
     if (s.level >= s.maxLevel || score < cost) { flashMoneyError(); return; }
     
     score -= cost;
+    playSound('purchase'); // ÚJ: Pénzköltés hang!
     s.level++;
     
     if (typeof playerStats !== 'undefined') {
@@ -508,15 +533,18 @@ window.updateShopButtons = function() {
         else if (wp.level === 4) nextLevelDesc = "Páncéltörő (+100% Sebzés)";
         
         if (!wp.owned) { 
-            btn.innerHTML = getBtnHTML(wData.name, wData.image, "ÁLLAPOT: ZÁROLVA", `ENGEDÉLYEZÉS: ${wData.basePrice} CR`); 
-            btn.disabled = score < wData.basePrice; 
+            // ÚJ: Kiszámoljuk, telik-e rá. Ha nem, piros lesz a szöveg!
+            let pColor = score >= wData.basePrice ? "#00ff00" : "#ff5555";
+            btn.innerHTML = getBtnHTML(wData.name, wData.image, "ÁLLAPOT: ZÁROLVA", `<span style="color:${pColor};">ENGEDÉLYEZÉS: ${wData.basePrice} CR</span>`); 
+            btn.disabled = false; // JAVÍTÁS: Kattintható marad!
         } else if (wp.level < 5) { 
             let upgPrice = wData.basePrice * wp.level;
-            btn.innerHTML = getBtnHTML(wData.name, wData.image, `FEJLETTSÉG: LVL <span style="color:#fff;">${wp.level}</span> ➔ <span style="color:#00ffff;">${wp.level+1}</span><br><span style="color:#00ffff; font-size: 12px;">BÓNUSZ: ${nextLevelDesc}</span>`, `KALIBRÁCIÓ: ${upgPrice} CR`); 
-            btn.disabled = score < upgPrice;
+            let pColor = score >= upgPrice ? "#00ff00" : "#ff5555";
+            btn.innerHTML = getBtnHTML(wData.name, wData.image, `FEJLETTSÉG: LVL <span style="color:#fff;">${wp.level}</span> ➔ <span style="color:#00ffff;">${wp.level+1}</span><br><span style="color:#00ffff; font-size: 12px;">BÓNUSZ: ${nextLevelDesc}</span>`, `<span style="color:${pColor};">KALIBRÁCIÓ: ${upgPrice} CR</span>`); 
+            btn.disabled = false; // JAVÍTÁS: Kattintható marad!
         } else { 
             btn.innerHTML = getBtnHTML(wData.name, wData.image, "ÁLLAPOT: MAX SZINT (LVL 5)", "---"); 
-            btn.disabled = true; 
+            btn.disabled = true; // Ez jogosan marad letiltva, mert nem tudod megvenni
         }
         btn.onclick = () => upgradeWeapon(wData.id, wData.basePrice);
     });
@@ -538,26 +566,25 @@ window.updateShopButtons = function() {
         
         if (s.level < s.maxLevel) { 
             let upgPrice = s.baseCost * (s.level + 1);
+            let pColor = score >= upgPrice ? "#00ff00" : "#ff5555"; // ÚJ: Színválasztás
             
-            // --- EGYEDI SZÖVEGEZÉS KÉPESSÉGENKÉNT ---
             let levelText = `FEJLETTSÉG: LVL <span style="color:#fff;">${s.level}</span> / ${s.maxLevel}`;
-            let btnActionText = `KALIBRÁCIÓ: ${upgPrice} CR`; // Alapértelmezett gomb szöveg
+            let btnActionText = `<span style="color:${pColor};">KALIBRÁCIÓ: ${upgPrice} CR</span>`; 
             
             if (sData.id === 'revive') {
                 levelText = `AKTÍV TÖLTÉSEK: <span style="color:#fff;">${s.level} / ${s.maxLevel}</span>`;
-                btnActionText = `ÚJRAKALIBRÁLÁS: ${upgPrice} CR`;
+                btnActionText = `<span style="color:${pColor};">ÚJRAKALIBRÁLÁS: ${upgPrice} CR</span>`;
             } else if (sData.id === 'freeze') {
-                // A te új, lore-barát szöveged a hűtőrendszerhez!
                 levelText = `LICENC SZINT: <span style="color:#fff;">${s.level}</span> / ${s.maxLevel}`;
-                btnActionText = `HOZZÁFÉRÉS VÉTELE: ${upgPrice} CR`;
+                btnActionText = `<span style="color:${pColor};">HOZZÁFÉRÉS VÉTELE: ${upgPrice} CR</span>`;
             }
             
             btn.innerHTML = getBtnHTML(sData.name, sData.image, `${levelText}<br><span style="color:#00ffff; font-size: 12px;">HATÁS: ${sData.desc}</span>`, btnActionText); 
-            btn.disabled = score < upgPrice;
+            btn.disabled = false; // JAVÍTÁS: Kattintható marad!
         } else { 
             let maxText = sData.id === 'freeze' ? "JOGOSULTSÁG: MAX (KORLÁTLAN)" : "ÁLLAPOT: MAX SZINT";
             btn.innerHTML = getBtnHTML(sData.name, sData.image, maxText, "---"); 
-            btn.disabled = true; 
+            btn.disabled = true; // Max szint miatt letiltva
         }
         btn.onclick = () => upgradeSkill(sData.id);
     });
@@ -576,19 +603,18 @@ window.updateShopButtons = function() {
         }
 
         if (!needsAmmo) {
-            // Ha tele van minden, letiltjuk a gombot!
             ammoBtn.innerHTML = getBtnHTML("LŐSZER UTÁNPÓTLÁS", "", "A tartalék kapacitás maximális.", "KÖLTSÉG: 0 CR");
-            ammoBtn.disabled = true;
+            ammoBtn.disabled = true; // Tele van, nem tudod megvenni
         } else {
-            // Ha kell lőszer, mehet a vásárlás!
-            ammoBtn.innerHTML = getBtnHTML("LŐSZER UTÁNPÓTLÁS", "", "+25% Tartalék minden fegyverbe", "KÖLTSÉG: 50 CR");
-            ammoBtn.disabled = (score < 50);
+            let pColor = score >= 50 ? "#00ff00" : "#ff5555";
+            ammoBtn.innerHTML = getBtnHTML("LŐSZER UTÁNPÓTLÁS", "", "+25% Tartalék minden fegyverbe", `<span style="color:${pColor};">KÖLTSÉG: 50 CR</span>`);
+            ammoBtn.disabled = false; // Kattintható marad, ha nincs pénzed, kiírja a hibát!
         }
 
     ammoBtn.onclick = () => {
             if (needsAmmo && score >= 50) { 
                 score -= 50; 
-                playSound('pickup'); // <--- ÚJ HANG
+                playSound('purchase'); // <--- ÚJ HANG
                 if (typeof giveGlobalAmmo === 'function') giveGlobalAmmo(); 
                 updateShopButtons(); 
             } else flashMoneyError();
@@ -614,7 +640,7 @@ window.updateShopButtons = function() {
             if (playerMedkits < maxMedkits && score >= medkitCost) {
                 score -= medkitCost; 
                 playerMedkits++; 
-                playSound('pickup'); // <--- ÚJ HANG
+                playSound('purchase'); // <--- ÚJ HANG
                 updateShopButtons(); 
             } else flashMoneyError();
         };
@@ -641,7 +667,7 @@ window.updateShopButtons = function() {
         healBtn.onclick = () => {
             if (missingHP > 0 && score >= healCost) {
                 score -= healCost; playerHealth = maxHealthVal; 
-                if (typeof playSound === 'function') playSound('heal');
+                if (typeof playSound === 'function') playSound('purchase');
                 const healFlash = document.getElementById('heal-flash');
                 if (healFlash) { healFlash.style.opacity = 1; setTimeout(() => healFlash.style.opacity = 0, 300); }
                 updateShopButtons(); 
@@ -688,7 +714,7 @@ window.updateShopButtons = function() {
             if (playerArmor < maxArmor && score >= armorCost) {
                 score -= armorCost; 
                 playerArmor = Math.min(maxArmor, playerArmor + 25);
-                playSound('pickup'); // <--- ÚJ HANG
+                playSound('purchase'); // <--- ÚJ HANG
                 updateShopButtons(); 
             } else flashMoneyError();
         };
@@ -717,13 +743,14 @@ window.updateShopButtons = function() {
         cleanBtn.onclick = () => {
             if (toxicPuddles.length > 0 && score >= cost) {
                 score -= cost;
+                 playSound('purchase'); // ÚJ: Pénzköltés hang!
                 for (let i = 0; i < amountToClean; i++) {
                     let oldestPuddle = toxicPuddles.shift(); 
                     scene.remove(oldestPuddle);
                     oldestPuddle.geometry.dispose(); 
                 }
                 updateToxicFog();
-                if (typeof playSound === 'function') playSound('heal');
+                if (typeof playSound === 'function') playSound('purchase');
                 updateShopButtons(); 
             } else {
                 flashMoneyError();
@@ -1054,8 +1081,10 @@ if (omniOpenDirBtn) {
         if (omniDirMenu) {
             omniDirMenu.classList.remove('hidden');
             omniDirMenu.style.display = 'flex';
+            playSound('termOpen');
         }
         renderDirectivesTab('info');
+        
     });
 }
 
@@ -1065,6 +1094,7 @@ if (omniOpenDirBtn) {
 var omniCloseDirBtn = document.getElementById('close-directives-btn');
 if (omniCloseDirBtn) {
     omniCloseDirBtn.addEventListener('click', () => {
+        playSound('termClose');
         // 1. Bezárjuk a Direktíva ablakot
         if (omniDirMenu) {
             omniDirMenu.classList.add('hidden');
@@ -1303,6 +1333,7 @@ if (omniTabDirIngameBtn) {
         if (omniDirMenu) {
             omniDirMenu.classList.remove('hidden');
             omniDirMenu.style.display = 'flex';
+            playSound('termOpen');
         }
         
         document.querySelectorAll('.dir-tab-btn').forEach(b => b.classList.remove('active'));
@@ -1468,11 +1499,13 @@ function createArchiveButton(title, text, isUnlocked, reqText, imageUrl, statTex
 // 1. Szerződés elfogadása
 window.acceptDirective = function(id) {
     if (playerStats.activeDirective) {
-        // JAVÍTÁS: A csúnya böngészős alert() helyett a mi saját, szép ablakunkat nyitjuk meg!
+        playSound('error'); // JAVÍTÁS: Hiba hang, ha már van aktív küldetés
         const alertBox = document.getElementById('custom-alert-overlay');
         if (alertBox) alertBox.style.display = 'flex';
         return;
     }
+    
+    playSound('questAccept'); // JAVÍTÁS: Küldetés elfogadva hang!
     
     playerStats.activeDirective = id;
     playerStats.directiveProgress = 0; 
@@ -1504,6 +1537,9 @@ window.cancelAbandon = function() {
 window.executeAbandon = function() {
     const overlay = document.getElementById('confirm-abandon-overlay');
     if (overlay) overlay.style.display = 'none';
+    
+    // --- JAVÍTÁS: Kőkemény ERROR hang a szerződés megszegésekor! ---
+    if (typeof playSound === 'function') playSound('error');
     
     if (playerStats.activeDirective) {
         playerStats.abandonedDirectives.push(playerStats.activeDirective);
