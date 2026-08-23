@@ -21,7 +21,11 @@ var playerStats = {
     activeDirective: null, 
     directiveProgress: 0,  
     completedDirectives: [], 
-    abandonedDirectives: []  
+    abandonedDirectives: [],
+    abandonedDirectives: [],
+    pendingDataPackets: 0,  // ÚJ: A szerveren várakozó, még le nem töltött adatok
+    uploadedDataPackets: 0  // ÚJ: Az agyadba már letöltött, aktív harci bónuszok
+ 
 };
 
 if (localStorage.getItem('OmniCorpStats')) {
@@ -55,16 +59,38 @@ window.savePlayerStats = function() {
     localStorage.setItem('OmniCorpStats', JSON.stringify(playerStats));
 }
 
-window.getResearchLevel = function(totalKills) {
-    let level = Math.floor(totalKills / 10);
-    return Math.min(5, level); 
+// Ezt a régi kill-alapú számolót lecseréljük a Neurális szintre!
+window.getResearchLevel = function() {
+    return playerStats.uploadedDataPackets; // Minden letöltött csomag = 1 szint
 }
 
-window.getDamageBoost = function(enemyType) {
-    if (!playerStats.kills[enemyType]) return 1.0;
-    let totalKills = playerStats.kills[enemyType].body + playerStats.kills[enemyType].head;
-    let level = getResearchLevel(totalKills);
-    return 1.0 + (level * 0.1); 
+// A globális sebzés bónusz kiszámolása (Csomagonként +5%)
+window.getDamageBoost = function() {
+    // Minden letöltött adatcsomag +5% (0.05) szorzót ad a fegyverek sebzéséhez!
+    let boost = 1.0 + (playerStats.uploadedDataPackets * 0.05);
+    return boost; 
+}
+
+// A Kódex statisztikai dobozának vizuális átírása
+function generateEnemyStatHTML(enemyType) {
+    let body = playerStats.kills[enemyType].body;
+    let head = playerStats.kills[enemyType].head;
+    let total = body + head;
+    
+    let activeBoost = Math.floor(playerStats.uploadedDataPackets * 5); // %-ban
+    let pending = playerStats.pendingDataPackets;
+    
+    return `<div style="display: flex; justify-content: space-between; align-items: center; height: 100%; font-size: 14px; line-height: 1.2;">
+                <div style="flex: 1; text-align: left; padding-right: 10px; border-right: 1px solid #005555;">
+                    <div style="color:#00ffff; margin-bottom: 5px;">NEURÁLIS SZINKRON:<br><span style="color:#fff; font-weight:bold; font-size:16px;">LVL ${playerStats.uploadedDataPackets}</span></div>
+                    <div style="color:#ffaa00;">HARCI OPTIMALIZÁCIÓ:<br><span style="color:#fff; font-weight:bold; font-size:16px;">+${activeBoost}% SEBZÉS</span></div>
+                </div>
+                <div style="flex: 1; text-align: right; padding-left: 10px;">
+                    <div style="color:#aaa; margin-bottom: 5px; font-size:11px;">(Szerveren várakozó adatok: <span style="color:#ffcc00;">${pending} db</span>)</div>
+                    <div style="color:#888; margin-bottom: 2px;">TESTLÖVÉS: <span style="color:#fff;">${body}</span></div>
+                    <div style="color:#ff0000; margin-bottom: 2px;">FEJLÖVÉS: <span style="color:#fff; font-weight:bold;">${head}</span></div>
+                </div>
+            </div>`;
 }
 
 function generateEnemyStatHTML(enemyType) {
@@ -455,6 +481,20 @@ enemies: [
             image: "https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/f7a96ae62770a39151b6187afb4bc708b4e3b6c8/Pictures/Seismic%20Resonator.jpg", 
             audio: "", // Ide majd tehetsz ElevenLabs hangot!
             text: "KRONOS ELEMZÉS: Ipari szeizmikus bontótöltet. Eredeti cél: mélyszinti bazalt és obszidián kőzetrétegek porlasztása az R&D szektor számára. Az eszköz által generált akusztikus frekvencia kizárólag a rideg szilárd anyagokat roncsolja. Az edzett ipari acéllal nem lép rezonanciába, így megóvja a létesítmény infrastruktúráját. Használata munkaállomások területén engedélyezett. A folyamat magas hőt és energiát generál.\n\nGALLAGHER MEGJEGYZÉSE: \"Ezek a bányász-dobozok menthetik meg az életedet, ECHO. A gép hangja pont olyan frekvencián csipog, ami megegyezik a Nexus mag kommunikációs rezonanciájával. Ezért vonzza a Kaptár hordáit. Ha lerakod, minden mutáns a közeledben ráfókuszál. A hullám ami utána jön, szó szerint leolvasztja a húst a csontjaikról, és még a savas pocsolyákat is elpárologtatja. De vigyázz, a Nexus Node átlát a cselen és megpróbálja aktiválás előtt szétverni a gépezetet! Azt se feledd hogy ez egy dögnehéz és instabil a szerkezet. Egyszerre csak egyetlen darabot tudsz a hátadra szíjazni. Oszd be jól, hogy mikor használod!\""
+        },
+        // --- ÚJ: NEURO-LINK (MÁTRIX LETÖLTÉS) KÓDEX BEJEGYZÉS ---
+        {
+            id: "equip_neural_link",
+            title: "NEURÁLIS SZINKRONIZÁCIÓ (NEURO-LINK)",
+            requirementText: "FELOLDÁS: Alapértelmezett hozzáférés.",
+            checkUnlock: () => true, // Alapból olvasható a kódexben
+            statInfo: () => {
+                let boost = (typeof playerStats !== 'undefined' && playerStats.uploadedDataPackets) ? (playerStats.uploadedDataPackets * 5) : 0;
+                return `<div style="text-align:center; color:#ff00ff; text-shadow: 0 0 10px #ff00ff;">AKTÍV HARCI OPTIMALIZÁCIÓ:<br><span style="font-size:24px; font-weight:bold; color:#fff;">+${boost}% SEBZÉS</span></div>`;
+            },
+            image: "https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/e42cad0b2e12c3ce8a3a89a8fff0de47471b9f20/Pictures/Neuro%20Link.jpeg", 
+            audio: "", // Ide is mehet majd egy szaftos audio log!
+            text: "KRONOS ELEMZÉS: Közvetlen agyi interfész (Neuro-Link) protokoll. Eredeti cél: Az ECHO klón-egységek memóriájának formázása és az ipari bányászati sémák gyorsított betáplálása a felébredés pillanatában. A rendszer képes szintetikus reflexeket és nagy mennyiségű adatcsomagot közvetlenül a klóntest idegrendszerébe telepíteni. A folyamat extrém sejt-szintű stresszel és átmeneti kognitív sokkal (hallucinációkkal) jár.\n\nGALLAGHER MEGJEGYZÉSE: \"Ezt a portot a tarkódon eredetileg arra használták, hogy betáplálják az agyadba, hogyan kell kezelni a fúrógépeket. De rájöttem, hogyan használjuk ki jobban. Ha teljesíted a KRONOS túlélési tesztjeit (Direktívákat), a gép adatokat gyűjt a mutánsok anatómiájáról. Ezek a megfigyelések a szerveren várakoznak. Ha rácsatlakozol egy Terminálra, kifizeted a hozzáférést és elindítod a Neurális Letöltést, a KRONOS egyenesen az agyadba tölti fel ezeket a harci protokollokat.\n\nSzó szerint megtanítja az izmaidnak, mik a dögök gyenge pontjai, hova lőj és hogyan vágj, hogy a legnagyobb kárt tudd okozni! Fájni fog. Olyan érzés, mintha egy pillanatra villám csapna az agyadba, de minden egyes letöltéssel megnő az esélyed a túlélésre\""
         }
     ]
 };
