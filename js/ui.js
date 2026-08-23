@@ -646,6 +646,31 @@ window.updateShopButtons = function() {
         };
     }
 
+    // --- ÚJ: Szeizmikus Rezonátor Vásárlás ---
+    const resBtn = document.getElementById('buy-resonator');
+    if (resBtn) {
+        resBtn.classList.add('btn-action'); 
+        let resCost = 250; // Drága, hogy taktikus legyen!
+        
+        if (typeof playerResonators !== 'undefined' && playerResonators >= maxResonators) {
+            resBtn.innerHTML = getBtnHTML("SZEIZMIKUS REZONÁTOR", "", "Készlet maximális (3/3).", "KÖLTSÉG: 0 CR");
+            resBtn.disabled = true;
+        } else {
+            let pColor = score >= resCost ? "#00ff00" : "#ff5555";
+            resBtn.innerHTML = getBtnHTML("SZEIZMIKUS REZONÁTOR", "", `Ipari terület-megtisztító töltet. Vonzza a mutánsokat!<br>Készlet: ${typeof playerResonators !== 'undefined' ? playerResonators : 0} / ${maxResonators}`, `<span style="color:${pColor};">KÖLTSÉG: ${resCost} CR</span>`);
+            resBtn.disabled = false;
+        }
+        
+        resBtn.onclick = () => {
+            if (playerResonators < maxResonators && score >= resCost) {
+                score -= resCost; 
+                playerResonators++; 
+                playSound('purchase'); 
+                updateShopButtons(); 
+            } else flashMoneyError();
+        };
+    }
+
     // 5. GYORSMŰVELETEK: Instant Gyógyászati Protokoll (Marad a régi)
     const healBtn = document.getElementById('buy-health');
     if (healBtn) {
@@ -764,6 +789,16 @@ window.updateUI = function() {
     // 1. ÉLETERŐ ÉS PÁNCÉL FRISSÍTÉSE (Bal alsó sarok)
     let maxHP = 100 + (skills.maxHealth.level * 20);
     
+// Rezonátor frissítése a HUD-on
+    const resCounter = document.getElementById('resonator-counter');
+    if (resCounter) {
+        if (playerResonators > 0) {
+            resCounter.style.display = 'inline-block';
+            resCounter.innerText = `[ S-R: ${playerResonators} ]`; // <--- INNEN IS KIVETTÜK A BOMBÁT!
+        } else {
+            resCounter.style.display = 'none';
+        }
+    }
 
 // Szám és Medkitek frissítése a HUD-on
     const healthNum = document.getElementById('health-number');
@@ -1031,10 +1066,11 @@ document.getElementById('restart-btn').addEventListener('click', (e) => {
     document.getElementById('game-ui-wrapper').classList.add('hidden');
     document.getElementById('main-menu').classList.remove('hidden');
     
-    // --- TAKARÍTÁS ÚJRAINDÍTÁSKOR ---
+// --- TAKARÍTÁS ÚJRAINDÍTÁSKOR ---
     document.body.classList.remove('drugged', 'infected-mild', 'infected-medium', 'infected-severe');
     if (typeof playerInfection !== 'undefined') playerInfection = 0;
     if (typeof druggedTimer !== 'undefined') druggedTimer = 0;
+    playerResonators = 0; // <--- ÚJ: ITT IS NULLÁZZUK, HA MEGHALSZ!
     if (typeof sounds !== 'undefined' && sounds['whispers'] && sounds['whispers'].isPlaying) {
         sounds['whispers'].stop(); // Suttogás kikapcsolása
     }
