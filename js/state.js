@@ -14,6 +14,9 @@ var playerInfection = 0; // ÚJ: 0-tól 100%-ig terjedő skála
 var infectionSpasmTimer = 0; // Mikor jön a következő "idegrángás"
 var playerArmor = 0; 
 var playerMedkits = 0; 
+var playerResonators = 0; // Mennyi Szeizmikus Rezonátor van nálad
+var maxResonators = 3;    // Maximum 3 db lehet nálad
+var activeResonators = []; // A pályán lévő élesített rezonátorok listája
 var maxMedkits = 3; 
 var score = 0; 
 var currentWave = 1;
@@ -30,6 +33,9 @@ var totalPausedTime = 0;
 var lastWaveBonus = 0;
 var isShootingBtnPressed = false;
 var autoShootTimer = 0;
+
+var resonatorModel = null;
+var resonatorAnimations = null;
 
 // --- ÚJ FPS FEGYVER RENDSZER VÁLTOZÓK ---
 var loadedFPSModels = {}; // Ide mentjük a letöltött 3D karokat és animációkat
