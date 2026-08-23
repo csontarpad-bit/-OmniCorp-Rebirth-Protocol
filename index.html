@@ -23,10 +23,10 @@
     <div id="loading-screen" style="position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 9990; overflow: hidden; background: #000;">
         
         <!-- 1. RÉTEG: A Baleset előtti (Jó) háttér -->
-        <div id="bg-good" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-image: url('https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/77c84b40fe1dd0680dfd1262d700c45f3245c1f0/loading%20scrren%20good.jpeg'); background-size: cover; background-position: center; z-index: 1;"></div>
+        <div id="bg-good" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-image: url('https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/ea07a9ebc31facd3b0f07d9347fab3d4b39d9a46/Pictures/Loading%20screen%20before.jpeg'); background-size: cover; background-position: center; z-index: 1;"></div>
         
         <!-- 2. RÉTEG: A Baleset utáni (Szörnyes) háttér (Kezdetben átlátszó!) -->
-        <div id="bg-bad" class="fade-transition" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-image: url('https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/00ad21b70dad334c3614f776895e17d20e34f833/Loading.jpeg'); background-size: cover; background-position: center; opacity: 0; z-index: 2;"></div>
+        <div id="bg-bad" class="fade-transition" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-image: url('https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/ea07a9ebc31facd3b0f07d9347fab3d4b39d9a46/Pictures/Loading%20screen%20after.jpg'); background-size: cover; background-position: center; opacity: 0; z-index: 2;"></div>
 
         <!-- 3. RÉTEG: Sötétítő maszk fentre, hogy a szöveg olvasható legyen a világos laboron is -->
         <div style="position: absolute; top: 0; left: 0; width: 100%; height: 50%; background: linear-gradient(to bottom, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0) 100%); z-index: 3;"></div>
@@ -65,7 +65,7 @@
 
     <!-- INTRO VIDEÓ LEJÁTSZÓ -->
     <div id="intro-video-screen" class="hidden" style="position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; background: #000; z-index: 9500; display: flex; justify-content: center; align-items: center; overflow: hidden;">
-        <video id="intro-video" src="https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/25d9afc7ab2489c689298e9c7aee89b8c8d45fee/Intro.mp4" playsinline style="width: 100%; height: 100%; object-fit: cover;"></video>
+        <video id="intro-video" src="https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/ea07a9ebc31facd3b0f07d9347fab3d4b39d9a46/Video/Intro%20Video.mp4" playsinline style="width: 100%; height: 100%; object-fit: cover;"></video>
         <button id="skip-intro-btn" style="position: absolute; bottom: 30px; right: 30px; background: rgba(0,0,0,0.5); color: #fff; border: 1px solid #fff; padding: 10px 20px; font-family: 'Share Tech Mono', monospace; font-size: 16px; cursor: pointer; transition: 0.2s; border-radius: 5px;">KATTINTS A KIHAGYÁSHOZ >></button>
     </div>
 
@@ -214,6 +214,9 @@
                         <button id="skill-revive" class="shop-btn"></button>
                         <button id="skill-freeze" class="shop-btn"></button>
                     </div>
+                <!-- ÚJ: MÁTRIX TUDAT-LETÖLTÉS GOMB -->
+                    <button id="buy-neural-upload" class="shop-btn" style="width: 100%; margin-top: 15px; border-left: 5px solid #ff00ff; background: rgba(50, 0, 50, 0.6);"></button>
+                    
                 </div>
 
                 <!-- Direktívák -->
