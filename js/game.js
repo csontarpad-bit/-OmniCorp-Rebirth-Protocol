@@ -834,6 +834,12 @@ window.checkDirective = function(actionType, targetType) {
         if (playerStats.directiveProgress >= activeData.goal) {
             playSound('questComplete'); // JAVÍTÁS: Küldetés teljesítve hang!
             score += activeData.reward; // Pénz hozzáadása!
+
+                        // --- ÚJ: Megkapod az adatcsomagot a KRONOS szerverére! ---
+            playerStats.pendingDataPackets++; 
+            
+            // Beírjuk a teljesített listába, hogy többé ne sorsolja ki
+            playerStats.completedDirectives.push(playerStats.activeDirective);
             
             // Beírjuk a teljesített listába, hogy többé ne sorsolja ki
             playerStats.completedDirectives.push(playerStats.activeDirective);
@@ -1361,7 +1367,8 @@ if (en.health <= 0) {
                     let currentDist = Math.hypot(camera.position.x - en.mesh.position.x, camera.position.z - en.mesh.position.z);
                     playSound('zombieHit', 0, 0, currentDist);
 
-                    let researchBoost = typeof getDamageBoost === 'function' ? getDamageBoost(en.type === 'hider' ? 'stalker' : en.type) : 1.0;
+                    // ÚJ: A sebzés boost most már a tudatodba töltött adatokból jön!
+                    let researchBoost = typeof getDamageBoost === 'function' ? getDamageBoost() : 1.0;
                     
                     let baseDmg = isHeadshot ? wpn.damage * 3 : wpn.damage;
                     let dmg = (baseDmg * (en.shieldMult || 1.0)) * researchBoost; 
