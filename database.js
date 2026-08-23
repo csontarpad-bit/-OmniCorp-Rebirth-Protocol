@@ -445,6 +445,16 @@ enemies: [
             statInfo: () => `<div style="text-align:center;">LICENC SZINT:<br>${typeof skills !== 'undefined' ? skills.freeze.level : 0} / 5. SZINT</div>`,
             image: "https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/9807e89295cfc8f0ba0b95ab93aaa0180b8b8d41/cryo.jpeg", 
             text: "KRONOS ELEMZÉS: Központi klímaszabályozó rendszer. Illetéktelen beavatkozás észlelve.\n\nGALLAGHER MEGJEGYZÉSE: \"Feltörtem a klímarendszert! Ha kifizeted a licenszet az R&D laborban, rá tudsz csatlakozni a PDA-dról, és túlterhelheted a lift hűtőszelepeit. Folyékony nitrogént fog okádni a dögökre. Az AI próbálja majd elzárni a szelepet, de minél több kreditet ölsz a hackbe, annál tovább tudom fagyasztva tartani a rohadékokat az ereszkedés közben!\""
+        },
+         {
+            id: "equip_resonator",
+            title: "SZEIZMIKUS REZONÁTOR",
+            requirementText: "FELOLDÁS: Alapértelmezett hozzáférés.",
+            checkUnlock: () => true, // Alapból olvasható a kódexben
+            statInfo: () => `<div style="text-align:center;">HATÓSUGÁR: 5 MÉTER<br>PUSZTÍTÓ ERŐ: EXTRÉM<br><span style="color:#ff5555; font-size:12px;">MAX KAPACITÁS: 1 DB</span></div>`,
+            image: "https://raw.githubusercontent.com/csontarpad-bit/-OmniCorp-Rebirth-Protocol/f7a96ae62770a39151b6187afb4bc708b4e3b6c8/Pictures/Seismic%20Resonator.jpg", 
+            audio: "", // Ide majd tehetsz ElevenLabs hangot!
+            text: "KRONOS ELEMZÉS: Ipari szeizmikus bontótöltet. Eredeti cél: mélyszinti bazalt és obszidián kőzetrétegek porlasztása az R&D szektor számára. Az eszköz által generált akusztikus frekvencia kizárólag a rideg szilárd anyagokat roncsolja. Az edzett ipari acéllal nem lép rezonanciába, így megóvja a létesítmény infrastruktúráját. Használata munkaállomások területén engedélyezett. A folyamat magas hőt és energiát generál.\n\nGALLAGHER MEGJEGYZÉSE: \"Ezek a bányász-dobozok menthetik meg az életedet, ECHO. A gép hangja pont olyan frekvencián csipog, ami megegyezik a Nexus mag kommunikációs rezonanciájával. Ezért vonzza a Kaptár hordáit. Ha lerakod, minden mutáns a közeledben ráfókuszál. A hullám ami utána jön, szó szerint leolvasztja a húst a csontjaikról, és még a savas pocsolyákat is elpárologtatja. De vigyázz, a Nexus Node átlát a cselen és megpróbálja aktiválás előtt szétverni a gépezetet! Azt se feledd hogy ez egy dögnehéz és instabil a szerkezet. Egyszerre csak egyetlen darabot tudsz a hátadra szíjazni. Oszd be jól, hogy mikor használod!\""
         }
     ]
 };
