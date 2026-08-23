@@ -646,6 +646,53 @@ window.updateShopButtons = function() {
         };
     }
 
+    // --- ÚJ: NEURÁLIS TUDAT-LETÖLTÉS (MÁTRIX EFFEKT) ---
+    const neuralBtn = document.getElementById('buy-neural-upload');
+    if (neuralBtn) {
+        let uploadCost = 1000; // Fix ár!
+        let pending = playerStats.pendingDataPackets || 0;
+        let activeBoost = (playerStats.uploadedDataPackets || 0) * 5; // Jelenlegi boost
+        let nextBoost = (pending > 0) ? (pending * 5) : 0; // Mennyit kapsz most
+        
+        if (pending <= 0) {
+            neuralBtn.innerHTML = getBtnHTML("NEURÁLIS SZINKRONIZÁCIÓ", "", `Aktív harci optimalizáció: +${activeBoost}% Sebzés.<br><span style="color:#aaa;">Nincs elérhető új adatcsomag a KRONOS szerveren.</span>`, "KÖLTSÉG: 0 CR");
+            neuralBtn.disabled = true;
+            neuralBtn.style.borderColor = "#333";
+        } else {
+            let pColor = score >= uploadCost ? "#ff00ff" : "#ff5555";
+            neuralBtn.innerHTML = getBtnHTML("NEURÁLIS SZINKRONIZÁCIÓ", "", `KRONOS szerveren várakozó adatok: <span style="color:#ffcc00; font-weight:bold;">${pending} db</span>.<br><span style="color:#ff00ff;">Közvetlen tudat-letöltés: +${nextBoost}% Sebzés bónusz!</span>`, `<span style="color:${pColor};">LETÖLTÉS ÁRA: ${uploadCost} CR</span>`);
+            neuralBtn.disabled = false;
+            neuralBtn.style.borderColor = "#ff00ff";
+        }
+        
+        neuralBtn.onclick = () => {
+            if (pending > 0 && score >= uploadCost) {
+                score -= uploadCost;
+                
+                // Áttöltjük a várakozó adatokat az agyadba!
+                playerStats.uploadedDataPackets += playerStats.pendingDataPackets;
+                playerStats.pendingDataPackets = 0;
+                if (typeof savePlayerStats === 'function') savePlayerStats();
+                
+                // Mátrix-szerű letöltés hang (A Rezonátor élesedő hangja zseniális ide!)
+                playSound('resonatorPowerOn'); 
+                
+                // Lila képernyő-villanás az agyi sokk miatt
+                const damageFlash = document.getElementById('damage-flash');
+                if (damageFlash) { 
+                    damageFlash.style.backgroundColor = 'rgba(255, 0, 255, 0.4)'; 
+                    damageFlash.style.opacity = 1; 
+                    setTimeout(() => { 
+                        damageFlash.style.opacity = 0; 
+                        damageFlash.style.backgroundColor = 'rgba(255, 0, 0, 0.3)'; // Visszaáll pirosra
+                    }, 400); 
+                }
+                
+                updateShopButtons(); 
+            } else flashMoneyError();
+        };
+    }
+
     // --- ÚJ: Szeizmikus Rezonátor Vásárlás ---
     const resBtn = document.getElementById('buy-resonator');
     if (resBtn) {
