@@ -199,6 +199,7 @@
                         <button id="buy-health" class="shop-btn"></button>
                         <button id="buy-armor" class="shop-btn"></button>
                         <button id="buy-clean" class="shop-btn" style="grid-column: 1 / -1;"></button>
+                        <button id="buy-resonator" class="shop-btn" style="grid-column: 1 / -1;"></button>
                     </div>
                     <div class="terminal-sub" style="color: #ff5555; border-color: #550000; margin-top: 15px; margin-bottom: 0;">SZENNYEZETTSÉG: <span id="puddle-count">0</span> POCSOLYA</div>
                 </div>
@@ -259,6 +260,14 @@
         <div id="loot-progress-bar" style="width: 0%; height: 100%; background: #ffaa00; box-shadow: 0 0 10px #ffaa00;"></div>
     </div>
 
+    <!-- ÚJ: TELEPÍTÉS PROGRESS BAR -->
+    <div id="deploy-progress-container" class="hidden" style="position: absolute; top: 65%; left: 50%; transform: translateX(-50%); width: 250px; text-align: center; z-index: 50;">
+        <div style="color: #ffcc00; font-family: 'Share Tech Mono', monospace; font-size: 16px; margin-bottom: 5px; text-shadow: 0 0 5px #ffcc00; letter-spacing: 2px;">[ S-R ] RENDSZER ÉLESÍTÉSE...</div>
+        <div style="width: 100%; height: 10px; background: rgba(0,0,0,0.8); border: 2px solid #ffcc00; border-radius: 4px; box-shadow: 0 0 10px rgba(0,0,0,0.5);">
+            <div id="deploy-progress-bar" style="width: 0%; height: 100%; background: #ffcc00; box-shadow: 0 0 10px #ffcc00; transition: width 0.1s linear;"></div>
+        </div>
+    </div>
+
     <!-- ========================================== -->
 <!-- ÚJ: LOOT FELVÉTEL VIZUÁLIS VISSZAJELZÉS (POP-UP) -->
 <!-- ========================================== -->
@@ -316,6 +325,10 @@
             
             <!-- ÚJ: Külön elem a Medkitnek, nem a HP számba ágyazva! -->
             <span id="medkit-counter" style="font-size: 18px; color: #ff5555; font-weight: bold; text-shadow: 0 0 5px rgba(255,85,85,0.5); display: none;">[+1]</span>
+            
+            <!-- ÚJ: Szeizmikus Rezonátor számláló (Sárga) -->
+            <!-- ÚJ: Szeizmikus Rezonátor számláló (Sárga) -->
+            <span id="resonator-counter" style="font-size: 18px; color: #ffcc00; font-weight: bold; text-shadow: 0 0 5px rgba(255,204,0,0.5); display: none;">[ S-R: 0 ]</span>
         </div>
     </div>
 
